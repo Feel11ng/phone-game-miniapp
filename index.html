@@ -6,11 +6,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#6c5ce7">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="style.css">
+    <title>Phone Game</title>
+    <!-- Preload critical resources -->
+    <link rel="preload" href="sounds.js" as="script">
+    <link rel="preload" href="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3" as="audio" type="audio/mp3">
+    <link rel="preload" href="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" as="audio" type="audio/mp3">
+    <link rel="preload" href="https://assets.mixkit.co/sfx/preview/mixkit-warning-alarm-buzzer-991.mp3" as="audio" type="audio/mp3">
+    <meta name="theme-color" content="#6C5CE7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <style>
+        /* Critical CSS for initial load */
+        body { 
+            opacity: 0; 
+            transition: opacity 0.3s ease-in-out;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .app-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-color);
+            z-index: 9999;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(108, 92, 231, 0.1);
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        .loader::after {
+            content: '';  
+            box-sizing: border-box;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-bottom-color: var(--primary);
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="sounds.js" as="script">
+    <link rel="preload" href="api.js" as="script">
+    <link rel="preload" href="errorHandler.js" as="script">
+    <link rel="preload" href="animations.js" as="script">
+    
+    <!-- Load scripts with proper attributes -->
+    <script src="sounds.js" type="module"></script>
+    <script src="api.js" type="module"></script>
+    <script src="errorHandler.js" type="module"></script>
+    <script src="animations.js" type="module"></script>
+    
+    <!-- Main script with defer to ensure all modules are loaded -->
+    <script src="script.js" type="module" defer></script>
+    <script>
+        // Show loading state while resources are loading
+        document.addEventListener('DOMContentLoaded', () => {
+            // Preload critical sounds
+            const soundManager = new SoundManager();
+            
+            // When everything is loaded
+            window.addEventListener('load', () => {
+                // Fade in the app
+                document.body.style.opacity = '1';
+                
+                // Hide loading screen with a delay
+                const loadingScreen = document.querySelector('.app-loading');
+                if (loadingScreen) {
+                    loadingScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                    }, 300);
+                }
+                
+                // Play welcome sound
+                soundManager.play('notification');
+                
+                // Haptic feedback for app ready
+                soundManager.hapticFeedback('light');
+            });
+        });
+    </script>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div class="app-loading">
+        <div class="loader"></div>
+        <p style="margin-top: 16px; color: var(--text); font-weight: 500;">Загрузка...</p>
+    </div>
     <div class="app">
         <!-- Верхняя панель с балансом -->
         <header class="app-header">
