@@ -191,52 +191,70 @@ const eventHandlers = {
     
     // Открытие кейса
     handleOpenCase: async (e) => {
-        const caseId = parseInt(e.currentTarget.dataset.caseId);
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const button = e.currentTarget;
+        const caseId = parseInt(button.dataset.caseId);
         const caseData = state.cases.find(c => c.id === caseId);
         
-        if (!caseData) return;
+        if (!caseData) {
+            console.error('Кейс не найден:', caseId);
+            utils.showNotification('Ошибка: кейс не найден', 'error');
+            return;
+        }
         
         // Проверяем баланс
         if (state.user.signals < caseData.price) {
-            utils.showNotification('Недостаточно Сигналов!', 'error');
+            utils.showNotification(`Недостаточно Сигналов! Нужно ${caseData.price}`, 'error');
             return;
         }
         
         // Показываем анимацию загрузки
-        const button = e.currentTarget;
         const originalText = button.innerHTML;
         button.disabled = true;
         button.innerHTML = '<div class="spinner"></div>';
         
         try {
-            // Имитация задержки запроса
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Имитация задержки открытия кейса (от 1.5 до 3 секунд)
+            await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1500));
             
-            // Выбираем случайный приз
+            // Выбираем случайный приз с учетом вероятностей
             const prize = utils.weightedRandom(caseData.items);
             
-            // Добавляем приз в инвентарь
-            state.user.inventory.push({
+            // Создаем объект приза
+            const newPhone = {
                 id: Date.now(),
                 name: prize.name,
                 rarity: prize.rarity,
-                image: `https://via.placeholder.com/200?text=${encodeURIComponent(prize.name)}`,
+                image: `https://via.placeholder.com/300?text=${encodeURIComponent(prize.name)}`,
                 receivedAt: new Date().toISOString()
-            });
+            };
             
-            // Вычитаем стоимость кейса
+            // Добавляем приз в инвентарь
+            state.user.inventory.push(newPhone);
+            
+            // Обновляем баланс
             state.user.signals -= caseData.price;
-            updateBalance();
+            updateUI();
             
             // Показываем анимацию выигрыша
-            showPrizeAnimation(prize);
+            ui.showPrizeAnimation(newPhone);
             
-            // Добавляем в историю
-            addActivity(`Открыт кейс "${caseData.name}" и получен ${prize.name}`);
+            // Добавляем запись в историю
+            ui.addActivity(`Открыт кейс "${caseData.name}" и получен ${prize.name}`);
+            
+            // Обновляем счетчик телефонов в профиле
+            if (elements.totalPhones) {
+                elements.totalPhones.textContent = state.user.inventory.length;
+            }
+            
+            // В реальном приложении здесь был бы вызов API для сохранения изменений
+            console.log('Открыт кейс, получен приз:', newPhone);
             
         } catch (error) {
             console.error('Ошибка при открытии кейса:', error);
-            utils.showNotification('Произошла ошибка', 'error');
+            utils.showNotification('Произошла ошибка при открытии кейса', 'error');
         } finally {
             button.disabled = false;
             button.innerHTML = originalText;
@@ -275,7 +293,7 @@ const ui = {
             });
         });
         
-        // Инициализируем кнопку закрытия модального окна
+        // Инициализируем кнопки модального окна
         const closeModal = document.querySelector('.close-modal');
         if (closeModal) {
             closeModal.addEventListener('click', () => {
@@ -283,9 +301,29 @@ const ui = {
             });
         }
         
+        // Инициализируем кнопки профиля
+        const profileButtons = {
+            'settings-btn': () => utils.showNotification('Настройки скоро будут доступны', 'info'),
+            'help-btn': () => utils.showNotification('Обратитесь в поддержку для помощи', 'info'),
+            'logout-btn': () => {
+                if (confirm('Вы уверены, что хотите выйти?')) {
+                    // В реальном приложении здесь был бы выход из аккаунта
+                    utils.showNotification('Выход выполнен', 'success');
+                }
+            }
+        };
+        
+        Object.entries(profileButtons).forEach(([id, handler]) => {
+            const button = document.getElementById(id);
+            if (button) {
+                button.addEventListener('click', handler);
+            }
+        });
+        
         // Загружаем начальные данные
         loadHomePage();
         loadCases();
+        loadInventory(); // Загружаем инвентарь при инициализации
     },
     
     // Обновление баланса
@@ -352,58 +390,95 @@ const ui = {
         if (!inventoryList) return;
         
         // Показываем индикатор загрузки
-        const loadingElement = inventoryList.querySelector('.loading-spinner') || 
-            utils.createElement('div', { class: 'loading-spinner' }, [
-                utils.createElement('div', { class: 'spinner' }),
-                utils.createElement('p', { text: 'Загрузка коллекции...' })
-            ]);
+        const loadingElement = utils.createElement('div', { class: 'loading-spinner' }, [
+            utils.createElement('div', { class: 'spinner' }),
+            utils.createElement('p', { text: 'Загрузка коллекции...' })
+        ]);
         
+        // Очищаем и добавляем индикатор загрузки
         inventoryList.innerHTML = '';
         inventoryList.appendChild(loadingElement);
         
-        // Имитируем загрузку
+        // В реальном приложении здесь был бы запрос к API
+        // Пока используем тестовые данные
+        const testInventory = [
+            { id: 1, name: 'Samsung Galaxy A01', rarity: 'common', image: 'https://via.placeholder.com/150?text=Samsung+A01' },
+            { id: 2, name: 'iPhone 15 Pro Max', rarity: 'legendary', image: 'https://via.placeholder.com/150?text=iPhone+15+Pro+Max' },
+            { id: 3, name: 'Xiaomi Redmi Note 10', rarity: 'uncommon', image: 'https://via.placeholder.com/150?text=Xiaomi+Note+10' },
+            { id: 4, name: 'Google Pixel 8 Pro', rarity: 'rare', image: 'https://via.placeholder.com/150?text=Pixel+8+Pro' }
+        ];
+        
+        // Имитируем загрузку данных
         setTimeout(() => {
-            if (state.user.inventory.length === 0) {
+            try {
+                // Очищаем индикатор загрузки
+                inventoryList.innerHTML = '';
+                
+                if (testInventory.length === 0) {
+                    inventoryList.innerHTML = `
+                        <div class="empty-state">
+                            <p>Ваш инвентарь пуст</p>
+                            <p>Откройте кейсы, чтобы получить телефоны</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Создаем сетку для телефонов
+                const grid = utils.createElement('div', { class: 'phone-grid' });
+                
+                testInventory.forEach(phone => {
+                    const phoneElement = utils.createElement('div', { 
+                        class: 'phone-card',
+                        'data-phone-id': phone.id
+                    }, [
+                        utils.createElement('div', { class: 'phone-image' }, [
+                            utils.createElement('img', { 
+                                src: phone.image, 
+                                alt: phone.name,
+                                loading: 'lazy'
+                            })
+                        ]),
+                        utils.createElement('div', { class: 'phone-info' }, [
+                            utils.createElement('div', { 
+                                class: 'phone-name',
+                                text: phone.name
+                            }),
+                            utils.createElement('div', { 
+                                class: `phone-rarity rarity-${phone.rarity}`,
+                                text: getRarityName(phone.rarity)
+                            })
+                        ])
+                    ]);
+                    
+                    // Добавляем обработчик клика на карточку телефона
+                    phoneElement.addEventListener('click', () => {
+                        utils.showNotification(`Выбрано: ${phone.name} (${getRarityName(phone.rarity)})`, 'info');
+                    });
+                    
+                    grid.appendChild(phoneElement);
+                });
+                
+                inventoryList.appendChild(grid);
+                
+            } catch (error) {
+                console.error('Ошибка при загрузке инвентаря:', error);
                 inventoryList.innerHTML = `
-                    <div class="empty-state">
-                        <p>Ваш инвентарь пуст</p>
-                        <p>Откройте кейсы, чтобы получить телефоны</p>
+                    <div class="error-state">
+                        <p>Произошла ошибка при загрузке инвентаря</p>
+                        <button class="btn btn-secondary" id="retry-loading">Попробовать снова</button>
                     </div>
                 `;
-                return;
-            }
-            
-            // Создаем сетку для телефонов
-            const grid = utils.createElement('div', { class: 'phone-grid' });
-            
-            state.user.inventory.forEach(phone => {
-                const phoneElement = utils.createElement('div', { class: 'phone-card' }, [
-                    utils.createElement('div', { class: 'phone-image' }, [
-                        utils.createElement('img', { 
-                            src: phone.image, 
-                            alt: phone.name,
-                            loading: 'lazy'
-                        })
-                    ]),
-                    utils.createElement('div', { class: 'phone-info' }, [
-                        utils.createElement('div', { 
-                            class: 'phone-name',
-                            text: phone.name
-                        }),
-                        utils.createElement('div', { 
-                            class: `phone-rarity rarity-${phone.rarity}`,
-                            text: getRarityName(phone.rarity)
-                        })
-                    ])
-                ]);
                 
-                grid.appendChild(phoneElement);
-            });
-            
-            inventoryList.innerHTML = '';
-            inventoryList.appendChild(grid);
-            
-        }, 500);
+                // Добавляем обработчик для кнопки повтора
+                const retryButton = document.getElementById('retry-loading');
+                if (retryButton) {
+                    retryButton.addEventListener('click', () => {
+                        ui.loadInventory();
+                    });
+                }
+            }
+        }, 1000); // Имитация задержки загрузки
     },
     
     // Загрузка рынка
@@ -560,27 +635,40 @@ async function loadUserData() {
 
 // Обновление интерфейса на основе состояния
 function updateUI() {
-    // Обновляем баланс
-    ui.updateBalance();
-    
-    // Обновляем профиль
-    if (elements.profileUsername) {
-        elements.profileUsername.textContent = state.user.firstName;
-        elements.totalPhones.textContent = state.user.inventory.length;
-        elements.totalCases.textContent = '0'; // Можно добавить подсчет открытых кейсов
-        elements.totalSales.textContent = '0'; // Можно добавить историю продаж
-    }
-    
-    // Обновляем аватар
-    const avatarElements = [elements.userAvatar, elements.profileAvatar].filter(Boolean);
-    avatarElements.forEach(avatar => {
-        if (state.user.photoUrl) {
-            avatar.style.backgroundImage = `url(${state.user.photoUrl})`;
-            avatar.innerHTML = '';
-        } else {
-            avatar.textContent = state.user.firstName[0].toUpperCase();
+    try {
+        // Обновляем баланс
+        ui.updateBalance();
+        
+        // Обновляем профиль
+        if (elements.profileUsername) {
+            elements.profileUsername.textContent = state.user.firstName;
+            elements.totalPhones.textContent = state.user.inventory.length;
+            // Добавляем счетчик открытых кейсов
+            elements.totalCases.textContent = state.user.inventory.length > 0 ? state.user.inventory.length : '0';
+            elements.totalSales.textContent = '0'; // Можно добавить историю продаж
         }
-    });
+        
+        // Обновляем аватар
+        const avatarElements = [elements.userAvatar, elements.profileAvatar].filter(Boolean);
+        avatarElements.forEach(avatar => {
+            if (!avatar) return;
+            
+            if (state.user.photoUrl) {
+                avatar.style.backgroundImage = `url(${state.user.photoUrl})`;
+                avatar.innerHTML = '';
+            } else {
+                avatar.textContent = state.user.firstName ? state.user.firstName[0].toUpperCase() : 'U';
+            }
+        });
+        
+        // Обновляем отображение баланса в шапке
+        if (elements.balanceElement) {
+            elements.balanceElement.textContent = utils.formatNumber(state.user.signals);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка при обновлении интерфейса:', error);
+    }
 }
 
 // Инициализация при загрузке страницы
