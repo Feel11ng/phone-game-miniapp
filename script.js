@@ -5,6 +5,9 @@ const tg = window.Telegram?.WebApp;
 
 // Состояние приложения
 const state = {
+    // Текущая активная вкладка рынка
+    marketTab: 'buy',
+    
     user: {
         id: null,
         firstName: 'Игрок',
@@ -527,16 +530,221 @@ const ui = {
     
     // Загрузка рынка
     loadMarket: () => {
-        // Заглушка для загрузки рынка
-        const marketItems = document.getElementById('market-items');
-        if (!marketItems) return;
+        console.log('Загрузка рынка...');
         
-        marketItems.innerHTML = `
-            <div class="empty-state">
-                <p>Рынок скоро откроется</p>
-                <p>Здесь вы сможете покупать и продавать телефоны</p>
+        // Показываем индикатор загрузки
+        const marketContent = document.querySelector('#market-section .tab-content.active');
+        if (!marketContent) return;
+        
+        marketContent.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Загрузка рынка...</p>
             </div>
         `;
+        
+        // Имитация загрузки данных с сервера
+        setTimeout(() => {
+            try {
+                // Определяем активную вкладку
+                const activeTab = document.querySelector('.market-tabs .tab-btn.active')?.dataset.tab || 'buy';
+                
+                if (activeTab === 'buy') {
+                    ui.showMarketItems();
+                } else if (activeTab === 'sell') {
+                    ui.showSellInterface();
+                } else if (activeTab === 'my-sales') {
+                    ui.showMySales();
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке рынка:', error);
+                marketContent.innerHTML = `
+                    <div class="error-state">
+                        <p>Произошла ошибка при загрузке рынка</p>
+                        <button class="btn btn-secondary" id="retry-market">Попробовать снова</button>
+                    </div>
+                `;
+            }
+        }, 800);
+    },
+    
+    // Показать товары на рынке
+    showMarketItems: () => {
+        const marketContent = document.querySelector('#market-section .tab-content.active');
+        if (!marketContent) return;
+        
+        // Тестовые данные для демонстрации
+        const marketItems = [
+            { id: 1, name: 'iPhone 15 Pro Max', price: 500, seller: 'User123', rarity: 'legendary' },
+            { id: 2, name: 'Samsung Galaxy S23', price: 450, seller: 'Trader22', rarity: 'rare' },
+            { id: 3, name: 'Google Pixel 8 Pro', price: 400, seller: 'PhoneLover', rarity: 'rare' },
+            { id: 4, name: 'Xiaomi 13T Pro', price: 350, seller: 'TechGuru', rarity: 'uncommon' }
+        ];
+        
+        let html = `
+            <div class="market-filters">
+                <select class="filter-select" id="market-filter">
+                    <option value="all">Все телефоны</option>
+                    <option value="common">Обычные</option>
+                    <option value="uncommon">Необычные</option>
+                    <option value="rare">Редкие</option>
+                    <option value="legendary">Легендарные</option>
+                </select>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="market-search" placeholder="Поиск по названию...">
+                </div>
+            </div>
+            <div class="market-items" id="market-items-list">
+        `;
+        
+        if (marketItems.length === 0) {
+            html += `
+                <div class="empty-state">
+                    <p>На рынке пока нет товаров</p>
+                    <p>Будьте первым, кто выставит телефон на продажу!</p>
+                </div>
+            `;
+        } else {
+            marketItems.forEach(item => {
+                html += `
+                    <div class="market-item rarity-${item.rarity}" data-id="${item.id}">
+                        <div class="item-image">
+                            <img src="https://via.placeholder.com/80?text=${encodeURIComponent(item.name.split(' ')[0])}" alt="${item.name}">
+                        </div>
+                        <div class="item-details">
+                            <h4>${item.name}</h4>
+                            <div class="item-seller">Продавец: ${item.seller}</div>
+                            <div class="item-rarity">${getRarityName(item.rarity)}</div>
+                        </div>
+                        <div class="item-actions">
+                            <div class="item-price">${item.price} <i class="fas fa-bolt"></i></div>
+                            <button class="btn btn-buy" data-id="${item.id}">Купить</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `</div>`; // Закрываем market-items
+        marketContent.innerHTML = html;
+    },
+    
+    // Показать интерфейс продажи
+    showSellInterface: () => {
+        const marketContent = document.querySelector('#market-section .tab-content.active');
+        if (!marketContent) return;
+        
+        // Получаем телефоны из инвентаря пользователя
+        const userPhones = state.user.inventory || [];
+        
+        let html = `
+            <div class="sell-interface">
+                <h3>Выберите телефон для продажи</h3>
+                <div class="inventory-list" id="sell-phone-list">
+        `;
+        
+        if (userPhones.length === 0) {
+            html += `
+                <div class="empty-state">
+                    <p>Ваш инвентарь пуст</p>
+                    <p>Откройте кейсы, чтобы получить телефоны для продажи</p>
+                </div>
+            `;
+        } else {
+            userPhones.forEach(phone => {
+                html += `
+                    <div class="phone-item" data-id="${phone.id}">
+                        <div class="phone-image">
+                            <img src="${phone.image}" alt="${phone.name}">
+                        </div>
+                        <div class="phone-info">
+                            <h4>${phone.name}</h4>
+                            <div class="phone-rarity rarity-${phone.rarity}">${getRarityName(phone.rarity)}</div>
+                        </div>
+                        <div class="phone-price">
+                            <input type="number" min="1" value="100" class="price-input" placeholder="Цена">
+                            <button class="btn btn-sell" data-id="${phone.id}">Продать</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                </div>
+                <div class="sell-tip">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Вы получите 90% от указанной цены (10% - комиссия площадки)</p>
+                </div>
+            </div>
+        `;
+        
+        marketContent.innerHTML = html;
+    },
+    
+    // Показать мои продажи
+    showMySales: () => {
+        const marketContent = document.querySelector('#market-section .tab-content.active');
+        if (!marketContent) return;
+        
+        // Тестовые данные для демонстрации
+        const mySales = [
+            { id: 1, name: 'iPhone 14 Pro', price: 450, status: 'sold', date: '2023-12-20' },
+            { id: 2, name: 'Samsung S22', price: 400, status: 'active', date: '2023-12-21' },
+            { id: 3, name: 'Google Pixel 7', price: 350, status: 'cancelled', date: '2023-12-18' }
+        ];
+        
+        let html = `
+            <div class="my-sales">
+                <h3>Мои продажи</h3>
+                <div class="sales-list">
+        `;
+        
+        if (mySales.length === 0) {
+            html += `
+                <div class="empty-state">
+                    <p>У вас пока нет активных продаж</p>
+                    <p>Выставите телефон на продажу во вкладке "Продать"</p>
+                </div>
+            `;
+        } else {
+            mySales.forEach(sale => {
+                let statusText = '';
+                let statusClass = '';
+                
+                if (sale.status === 'sold') {
+                    statusText = 'Продано';
+                    statusClass = 'status-sold';
+                } else if (sale.status === 'active') {
+                    statusText = 'Активно';
+                    statusClass = 'status-active';
+                } else {
+                    statusText = 'Отменено';
+                    statusClass = 'status-cancelled';
+                }
+                
+                html += `
+                    <div class="sale-item">
+                        <div class="sale-info">
+                            <h4>${sale.name}</h4>
+                            <div class="sale-date">${sale.date}</div>
+                            <div class="sale-status ${statusClass}">${statusText}</div>
+                        </div>
+                        <div class="sale-price">
+                            ${sale.price} <i class="fas fa-bolt"></i>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+        
+        marketContent.innerHTML = html;
     },
     
     // Показ анимации выигрыша
@@ -717,6 +925,87 @@ function updateUI() {
 
 // Функция для делегирования событий
 function setupEventDelegation() {
+    // Обработка переключения вкладок рынка
+    document.addEventListener('click', (e) => {
+        const tabBtn = e.target.closest('.market-tabs .tab-btn');
+        if (tabBtn) {
+            e.preventDefault();
+            const tabId = tabBtn.dataset.tab;
+            
+            // Обновляем активную вкладку
+            document.querySelectorAll('.market-tabs .tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn === tabBtn);
+            });
+            
+            // Показываем соответствующий контент
+            document.querySelectorAll('.market-section .tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            const targetTab = document.getElementById(`${tabId}-tab`);
+            if (targetTab) {
+                targetTab.classList.add('active');
+            }
+            
+            // Загружаем данные для выбранной вкладки
+            if (tabId === 'buy') {
+                ui.showMarketItems();
+            } else if (tabId === 'sell') {
+                ui.showSellInterface();
+            } else if (tabId === 'my-sales') {
+                ui.showMySales();
+            }
+        }
+        
+        // Обработка кнопки покупки на рынке
+        const buyBtn = e.target.closest('.btn-buy');
+        if (buyBtn) {
+            const itemId = parseInt(buyBtn.dataset.id);
+            const itemElement = buyBtn.closest('.market-item');
+            const itemName = itemElement?.querySelector('h4')?.textContent || 'этот товар';
+            
+            if (confirm(`Вы уверены, что хотите купить ${itemName}?`)) {
+                // Здесь будет вызов API для покупки
+                utils.showNotification(`Поздравляем с покупкой ${itemName}!`, 'success');
+                // Обновляем интерфейс
+                itemElement.remove();
+                // Обновляем баланс (в реальном приложении это будет после ответа сервера)
+                state.user.signals -= 100; // Примерная сумма
+                updateUI();
+            }
+        }
+        
+        // Обработка кнопки продажи
+        const sellBtn = e.target.closest('.btn-sell');
+        if (sellBtn) {
+            const phoneId = parseInt(sellBtn.dataset.id);
+            const phoneItem = sellBtn.closest('.phone-item');
+            const priceInput = phoneItem?.querySelector('.price-input');
+            const price = priceInput ? parseInt(priceInput.value) : 0;
+            
+            if (!price || price < 1) {
+                utils.showNotification('Укажите корректную цену', 'error');
+                return;
+            }
+            
+            const phoneName = phoneItem?.querySelector('h4')?.textContent || 'этот телефон';
+            
+            if (confirm(`Выставить на продажу ${phoneName} за ${price} сигналов?`)) {
+                // Здесь будет вызов API для размещения на продажу
+                utils.showNotification(`Телефон ${phoneName} выставлен на продажу за ${price} сигналов`, 'success');
+                // В реальном приложении нужно удалить телефон из инвентаря после ответа сервера
+                // и добавить его в раздел "Мои продажи"
+                phoneItem.remove();
+            }
+        }
+        
+        // Обработка кнопки повтора загрузки рынка
+        const retryBtn = e.target.closest('#retry-market');
+        if (retryBtn) {
+            ui.loadMarket();
+        }
+    });
+    
     // Обработка кликов по кнопкам открытия кейсов
     document.addEventListener('click', (e) => {
         const openCaseBtn = e.target.closest('.open-case-btn');
