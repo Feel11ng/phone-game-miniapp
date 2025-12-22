@@ -816,6 +816,12 @@ function setupEventDelegation() {
         }
     });
     
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', () => {
+        // Добавляем класс loaded для плавного появления
+        document.body.classList.add('loaded');
+    });
+    
     // Обработка нажатия на карточки
     document.addEventListener('mousedown', (e) => {
         const pressable = e.target.closest('.pressable, .card, .btn');
