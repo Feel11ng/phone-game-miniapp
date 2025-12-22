@@ -3,118 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <title>Phone Tycoon</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Подключаем Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6c5ce7">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
+    <div class="app">
+        <!-- Верхняя панель с балансом -->
         <header class="app-header">
-            <div class="logo">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#ffffff"/>
-                </svg>
-                <h1>Phone Tycoon</h1>
+            <div class="balance-card">
+                <i class="fas fa-bolt"></i>
+                <span id="signals-count">0</span> Сигналов
             </div>
-            <div class="balance-display">
-                <span class="signal-icon">⚡</span>
-                <span id="signals-count">100</span>
+            <div class="user-avatar" id="user-avatar">
+                <i class="fas fa-user"></i>
             </div>
         </header>
 
-        <!-- Main Content -->
-        <main class="app-content">
-            <!-- Tab Navigation -->
-            <div class="tabs">
-                <button class="tab-button active" data-tab="inventory">Коллекция</button>
-                <button class="tab-button" data-tab="cases">Кейсы</button>
-                <button class="tab-button" data-tab="market">Рынок</button>
-            </div>
+        <!-- Основное содержимое -->
+        <main class="main-content" id="main-content">
+            <!-- Главная страница -->
+            <section id="home-section" class="page active">
+                <div class="welcome-banner">
+                    <h1>Добро пожаловать в Phone Tycoon!</h1>
+                    <p>Собирай, улучшай и продавай виртуальные телефоны</p>
+                </div>
+                
+                <div class="quick-actions">
+                    <div class="action-card" data-section="inventory">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Инвентарь</span>
+                    </div>
+                    <div class="action-card" data-section="cases">
+                        <i class="fas fa-gift"></i>
+                        <span>Кейсы</span>
+                    </div>
+                    <div class="action-card" data-section="market">
+                        <i class="fas fa-store"></i>
+                        <span>Рынок</span>
+                    </div>
+                </div>
 
-            <!-- Inventory Tab -->
-            <section id="inventory-tab" class="tab-content active">
-                <h2>Ваша коллекция</h2>
+                <div class="recent-activity">
+                    <h2>Последние действия</h2>
+                    <div class="activity-list" id="activity-feed">
+                        <div class="activity-item">Добро пожаловать в игру!</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Раздел инвентаря -->
+            <section id="inventory-section" class="page">
+                <div class="section-header">
+                    <h2>Ваша коллекция</h2>
+                    <div class="filters">
+                        <button class="filter-btn active">Все</button>
+                        <button class="filter-btn">Обычные</button>
+                        <button class="filter-btn">Редкие</button>
+                        <button class="filter-btn">Эпические</button>
+                        <button class="filter-btn">Легендарные</button>
+                    </div>
+                </div>
                 <div id="inventory-list" class="phone-grid">
-                    <!-- Телефоны будут вставлены сюда -->
-                    <p id="inventory-loading">Загрузка...</p>
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p>Загрузка коллекции...</p>
+                    </div>
                 </div>
             </section>
 
-            <!-- Cases Tab -->
-            <section id="cases-tab" class="tab-content">
-                <h2>Открыть кейс</h2>
-                <div class="case-selector">
-                    <div class="case-card" data-case="basic">
-                        <img src="images/phones/case_basic.jpg" alt="Базовый кейс">
-                        <h3>Базовый кейс</h3>
-                        <p>50 Сигналов</p>
-                    </div>
-                    <div class="case-card" data-case="epic">
-                        <img src="images/phones/case_epic.jpg" alt="Эпический кейс">
-                        <h3>Эпический кейс</h3>
-                        <p>200 Сигналов</p>
-                    </div>
-                    <div class="case-card" data-case="legendary">
-                        <img src="images/phones/case_legendary.jpg" alt="Легендарный кейс">
-                        <h3>Легендарный кейс</h3>
-                        <p>500 Сигналов</p>
-                    </div>
-                </div>
-
-                <!-- Рулетка для открытия кейса -->
-                <div id="case-roulette" class="case-roulette hidden">
-                    <div class="roulette-container">
-                        <div class="roulette-wheel" id="roulette-wheel">
-                            <!-- Телефоны будут вставлены сюда динамически -->
+            <!-- Раздел кейсов -->
+            <section id="cases-section" class="page">
+                <h2>Кейсы</h2>
+                <div class="cases-grid">
+                    <div class="case-card" data-case-id="1">
+                        <div class="case-image">
+                            <img src="https://via.placeholder.com/120" alt="Базовый кейс">
+                        </div>
+                        <div class="case-info">
+                            <h3>Базовый кейс</h3>
+                            <div class="case-price">
+                                <i class="fas fa-bolt"></i> 50
+                            </div>
+                            <button class="btn open-case-btn" data-case-id="1">Открыть</button>
                         </div>
                     </div>
-                    <div class="roulette-controls">
-                        <button id="start-roulette-btn">Запустить рулетку</button>
-                        <button id="close-roulette-btn">Закрыть</button>
-                    </div>
+                    <!-- Другие кейсы будут добавлены динамически -->
                 </div>
 
-                <!-- Результат открытия кейса -->
-                <div id="case-result" class="case-result hidden">
-                    <h3>🎉 Поздравляем!</h3>
-                    <img id="result-phone-img" src="" alt="Новый телефон">
-                    <p id="result-phone-name"></p>
-                    <p id="result-rarity"></p>
-                    <button id="close-result-btn">Закрыть</button>
+                <div id="case-result" class="case-result-modal">
+                    <div class="modal-content">
+                        <span class="close-modal">&times;</span>
+                        <h3>Поздравляем!</h3>
+                        <div class="prize-animation">
+                            <div class="phone-reveal">
+                                <img id="result-phone-img" src="" alt="Новый телефон">
+                            </div>
+                            <div class="confetti"></div>
+                        </div>
+                        <p id="result-phone-name" class="prize-name"></p>
+                        <p class="prize-rarity"></p>
+                        <button class="btn" id="close-result">Отлично!</button>
+                    </div>
                 </div>
             </section>
 
-            <!-- Market Tab -->
-            <section id="market-tab" class="tab-content">
-                <h2>Рынок</h2>
-                <div class="market-list">
-                    <div class="market-item">
-                        <img src="images/phones/iphone_15_pro_max.jpg" alt="iPhone 15 Pro Max">
-                        <div class="market-info">
-                            <h3>iPhone 15 Pro Max</h3>
-                            <p>Цена: 1000 Сигналов</p>
-                            <button>Купить</button>
+            <!-- Раздел рынка -->
+            <section id="market-section" class="page">
+                <div class="market-tabs">
+                    <button class="tab-btn active" data-tab="buy">Купить</button>
+                    <button class="tab-btn" data-tab="sell">Продать</button>
+                    <button class="tab-btn" data-tab="my-sales">Мои продажи</button>
+                </div>
+                
+                <div class="tab-content active" id="buy-tab">
+                    <div class="market-filters">
+                        <select class="filter-select">
+                            <option>Все бренды</option>
+                            <option>Apple</option>
+                            <option>Samsung</option>
+                            <option>Google</option>
+                        </select>
+                        <input type="text" class="search-input" placeholder="Поиск...">
+                    </div>
+                    <div id="market-items" class="market-items">
+                        <!-- Товары будут загружены сюда -->
+                        <p class="empty-state">На рынке пока нет товаров</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Профиль пользователя -->
+            <section id="profile-section" class="page">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profile-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h2 id="username">Игрок</h2>
+                    <div class="profile-stats">
+                        <div class="stat">
+                            <div class="stat-value" id="total-phones">0</div>
+                            <div class="stat-label">Телефоны</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="total-cases">0</div>
+                            <div class="stat-label">Кейсы</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="total-sales">0</div>
+                            <div class="stat-label">Продажи</div>
                         </div>
                     </div>
-                    <div class="market-item">
-                        <img src="images/phones/samsung_s24_ultra.jpg" alt="Samsung Galaxy S24 Ultra">
-                        <div class="market-info">
-                            <h3>Samsung Galaxy S24 Ultra</h3>
-                            <p>Цена: 900 Сигналов</p>
-                            <button>Купить</button>
-                        </div>
-                    </div>
+                </div>
+
+                <div class="profile-actions">
+                    <button class="btn btn-outline" id="settings-btn">
+                        <i class="fas fa-cog"></i> Настройки
+                    </button>
+                    <button class="btn btn-outline" id="help-btn">
+                        <i class="fas fa-question-circle"></i> Помощь
+                    </button>
+                    <button class="btn btn-outline" id="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i> Выйти
+                    </button>
                 </div>
             </section>
         </main>
 
-        <!-- Footer -->
-        <footer class="app-footer">
-            <p>@phonetycoonbot</p>
-        </footer>
+        <!-- Нижняя навигация -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active" data-section="home">
+                <i class="fas fa-home"></i>
+                <span>Главная</span>
+            </a>
+            <a href="#" class="nav-item" data-section="inventory">
+                <i class="fas fa-mobile-alt"></i>
+                <span>Инвентарь</span>
+            </a>
+            <a href="#" class="nav-item" data-section="cases">
+                <i class="fas fa-gift"></i>
+                <span>Кейсы</span>
+            </a>
+            <a href="#" class="nav-item" data-section="market">
+                <i class="fas fa-store"></i>
+                <span>Рынок</span>
+            </a>
+            <a href="#" class="nav-item" data-section="profile">
+                <i class="fas fa-user"></i>
+                <span>Профиль</span>
+            </a>
+        </nav>
+
+        <!-- Уведомления -->
+        <div id="notification" class="notification"></div>
     </div>
 
     <script src="script.js"></script>
