@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Phone Tycoon</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Добро пожаловать в Phone Tycoon!</h1>
+
+        <div class="balance-section">
+            <p>Ваши Сигналы: <span id="signals-count">Загрузка...</span></p>
+        </div>
+
+        <div class="section" id="inventory-section">
+            <h2>Ваша коллекция</h2>
+            <div id="inventory-list" class="phone-grid">
+                <!-- Телефоны будут вставлены сюда динамически -->
+                <p id="inventory-loading">Загрузка...</p>
+            </div>
+        </div>
+
+        <div class="section" id="cases-section">
+            <h2>Открыть кейс</h2>
+            <button id="open-case-btn">Открыть Базовый кейс (50 Сигналов)</button>
+            <div id="case-result" style="display:none;">
+                <h3>Поздравляем!</h3>
+                <img id="result-phone-img" src="" alt="Новый телефон">
+                <p id="result-phone-name"></p>
+            </div>
+        </div>
+
+        <div class="section" id="market-section">
+            <h2>Рынок</h2>
+            <p>Здесь можно торговать телефонами.</p>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
