@@ -307,6 +307,32 @@ const eventHandlers = {
 
 // Функции для работы с интерфейсом
 const ui = {
+    // Фильтрация инвентаря
+    filterInventory: (filterType) => {
+        const inventoryList = document.getElementById('inventory-list');
+        if (!inventoryList) return;
+
+        const phoneCards = inventoryList.querySelectorAll('.phone-card');
+        
+        phoneCards.forEach(card => {
+            const rarity = card.querySelector('.phone-rarity')?.textContent?.toLowerCase() || '';
+            
+            if (filterType === 'все') {
+                card.style.display = 'block';
+            } else if (filterType === 'обычные' && rarity.includes('обычн')) {
+                card.style.display = 'block';
+            } else if (filterType === 'редкие' && rarity.includes('редк')) {
+                card.style.display = 'block';
+            } else if (filterType === 'эпические' && rarity.includes('эпич')) {
+                card.style.display = 'block';
+            } else if (filterType === 'легендарные' && rarity.includes('легенд')) {
+                card.style.display = 'block';
+            } else if (filterType !== 'все') {
+                card.style.display = 'none';
+            }
+        });
+    },
+    
     // Инициализация интерфейса
     init: () => {
         // Загружаем данные пользователя
@@ -699,7 +725,7 @@ function setupEventDelegation() {
             return;
         }
 
-        // Обработка кликов по кнопкам навигации
+        // Обработка кликов по кнопкам навигации в нижнем меню
         const navItem = e.target.closest('.nav-item');
         if (navItem) {
             e.preventDefault();
@@ -729,6 +755,34 @@ function setupEventDelegation() {
                     ui.loadCases();
                 } else if (section === 'profile') {
                     ui.loadProfile();
+                } else if (section === 'home') {
+                    ui.loadHomePage();
+                }
+            }
+        }
+
+        // Обработка кнопок фильтрации в инвентаре
+        const filterBtn = e.target.closest('.filter-btn');
+        if (filterBtn) {
+            e.preventDefault();
+            const filterType = filterBtn.textContent.trim().toLowerCase();
+            ui.filterInventory(filterType);
+            
+            // Обновляем активную кнопку фильтра
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn === filterBtn);
+            });
+        }
+
+        // Обработка кнопок быстрого доступа на главной
+        const actionCard = e.target.closest('.action-card');
+        if (actionCard) {
+            const section = actionCard.dataset.section;
+            if (section) {
+                // Находим соответствующий элемент навигации и эмулируем клик
+                const navItem = document.querySelector(`.nav-item[data-section="${section}"]`);
+                if (navItem) {
+                    navItem.click();
                 }
             }
         }
