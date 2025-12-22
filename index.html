@@ -119,19 +119,56 @@
                     <button class="tab-btn" data-tab="my-sales">Мои продажи</button>
                 </div>
                 
+                <!-- Вкладка покупки -->
                 <div class="tab-content active" id="buy-tab">
                     <div class="market-filters">
-                        <select class="filter-select">
-                            <option>Все бренды</option>
-                            <option>Apple</option>
-                            <option>Samsung</option>
-                            <option>Google</option>
+                        <select class="filter-select" id="market-filter">
+                            <option value="all">Все телефоны</option>
+                            <option value="common">Обычные</option>
+                            <option value="uncommon">Необычные</option>
+                            <option value="rare">Редкие</option>
+                            <option value="legendary">Легендарные</option>
                         </select>
-                        <input type="text" class="search-input" placeholder="Поиск...">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="market-search" placeholder="Поиск по названию...">
+                        </div>
                     </div>
                     <div id="market-items" class="market-items">
-                        <!-- Товары будут загружены сюда -->
-                        <p class="empty-state">На рынке пока нет товаров</p>
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Загрузка товаров...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Вкладка продажи -->
+                <div class="tab-content" id="sell-tab">
+                    <div class="sell-interface">
+                        <h3>Выберите телефон для продажи</h3>
+                        <div class="inventory-list" id="sell-phone-list">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Загрузка инвентаря...</p>
+                            </div>
+                        </div>
+                        <div class="sell-tip">
+                            <i class="fas fa-info-circle"></i>
+                            <p>Вы получите 90% от указанной цены (10% - комиссия площадки)</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Вкладка мои продажи -->
+                <div class="tab-content" id="my-sales-tab">
+                    <div class="my-sales">
+                        <h3>Мои продажи</h3>
+                        <div class="sales-list" id="sales-list">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Загрузка ваших продаж...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
