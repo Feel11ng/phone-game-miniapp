@@ -227,56 +227,82 @@ const ui = {
     },
     
     // Инициализация интерфейса
-    init: () => {
-        // Загружаем данные пользователя
-        loadUserData();
-        
-        // Инициализируем навигацию
-        elements.navItems.forEach(item => {
-            item.addEventListener('click', eventHandlers.handleNavigation);
-        });
-        
-        // Инициализируем быстрые действия на главной
-        const quickActions = document.querySelectorAll('.action-card');
-        quickActions.forEach(action => {
-            action.addEventListener('click', (e) => {
-                const section = e.currentTarget.dataset.section;
-                const navItem = document.querySelector(`.nav-item[data-section="${section}"]`);
-                if (navItem) navItem.click();
+    init: async () => {
+        try {
+            // Показываем состояние загрузки
+            const loadingElement = document.createElement('div');
+            loadingElement.className = 'loading-overlay';
+            loadingElement.innerHTML = `
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Загрузка приложения...</div>
+            `;
+            document.body.appendChild(loadingElement);
+            
+            // Инициализируем навигацию
+            elements.navItems.forEach(item => {
+                item.addEventListener('click', eventHandlers.handleNavigation);
             });
-        });
-        
-        // Инициализируем кнопки модального окна
-        const closeModal = document.querySelector('.close-modal');
-        if (closeModal) {
-            closeModal.addEventListener('click', () => {
-                document.querySelector('.modal').classList.remove('active');
+            
+            // Инициализируем быстрые действия на главной
+            const quickActions = document.querySelectorAll('.action-card');
+            quickActions.forEach(action => {
+                action.addEventListener('click', (e) => {
+                    const section = e.currentTarget.dataset.section;
+                    const navItem = document.querySelector(`.nav-item[data-section="${section}"]`);
+                    if (navItem) navItem.click();
+                });
             });
-        }
-        
-        // Инициализируем кнопки профиля
-        const profileButtons = {
-            'settings-btn': () => utils.showNotification('Настройки скоро будут доступны', 'info'),
-            'help-btn': () => utils.showNotification('Обратитесь в поддержку для помощи', 'info'),
-            'logout-btn': () => {
-                if (confirm('Вы уверены, что хотите выйти?')) {
-                    // В реальном приложении здесь был бы выход из аккаунта
-                    utils.showNotification('Выход выполнен', 'success');
+            
+            // Инициализируем кнопки модального окна
+            const closeModal = document.querySelector('.close-modal');
+            if (closeModal) {
+                closeModal.addEventListener('click', () => {
+                    document.querySelector('.modal')?.classList.remove('active');
+                });
+            }
+            
+            // Инициализируем кнопки профиля
+            const profileButtons = {
+                'settings-btn': () => utils.showNotification('Настройки скоро будут доступны', 'info'),
+                'help-btn': () => utils.showNotification('Обратитесь в поддержку для помощи', 'info'),
+                'logout-btn': () => {
+                    if (confirm('Вы уверены, что хотите выйти?')) {
+                        // В реальном приложении здесь был бы выход из аккаунта
+                        utils.showNotification('Выход выполнен', 'success');
+                    }
                 }
-            }
-        };
-        
-        Object.entries(profileButtons).forEach(([id, handler]) => {
-            const button = document.getElementById(id);
-            if (button) {
-                button.addEventListener('click', handler);
-            }
-        });
-        
-        // Загружаем начальные данные
-        loadHomePage();
-        loadCases();
-        loadInventory(); // Загружаем инвентарь при инициализации
+            };
+            
+            Object.entries(profileButtons).forEach(([id, handler]) => {
+                const button = document.getElementById(id);
+                if (button) {
+                    button.addEventListener('click', handler);
+                }
+            });
+            
+            // Загружаем начальные данные
+            await Promise.all([
+                loadUserData(),
+                loadHomePage(),
+                loadCases(),
+                loadInventory()
+            ]);
+            
+            // Обновляем UI после загрузки всех данных
+            updateUI();
+            
+            // Прячем индикатор загрузки
+            loadingElement.classList.add('fade-out');
+            setTimeout(() => {
+                loadingElement.remove();
+                document.body.classList.add('loaded');
+            }, 300);
+            
+        } catch (error) {
+            console.error('Ошибка инициализации:', error);
+            utils.showNotification('Ошибка при загрузке приложения', 'error');
+            document.body.classList.add('loaded');
+        }
     },
     
     // Обновление баланса
@@ -701,28 +727,59 @@ function createConfetti(container) {
 // Загрузка данных пользователя
 async function loadUserData() {
     try {
-        // В реальном приложении здесь был бы запрос к API
-        // const response = await fetch('/api/user');
-        // const data = await response.json();
+        // Инициализация Telegram WebApp, если доступно
+        if (window.Telegram?.WebApp) {
+            tg = window.Telegram.WebApp;
+            tg.expand(); // Раскрываем веб-приложение на весь экран
+            
+            // Ждем инициализации Telegram WebApp
+            if (!tg.initDataUnsafe) {
+                await new Promise(resolve => {
+                    const checkInit = setInterval(() => {
+                        if (tg.initDataUnsafe) {
+                            clearInterval(checkInit);
+                            resolve();
+                        }
+                    }, 100);
+                    
+                    // Таймаут на случай, если данные не придут
+                    setTimeout(() => {
+                        clearInterval(checkInit);
+                        resolve();
+                    }, 3000);
+                });
+            }
+            
+            // Загружаем данные пользователя из Telegram
+            if (tg.initDataUnsafe?.user) {
+                const tgUser = tg.initDataUnsafe.user;
+                state.user = {
+                    id: tgUser.id,
+                    firstName: tgUser.first_name || 'Игрок',
+                    username: tgUser.username || 'player',
+                    photoUrl: tgUser.photo_url
+                };
+            }
+        }
         
-        // Имитация загрузки данных
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Обновляем состояние
-        if (tg?.initDataUnsafe?.user) {
-            const tgUser = tg.initDataUnsafe.user;
-            state.user.id = tgUser.id;
-            state.user.firstName = tgUser.first_name || 'Игрок';
-            state.user.username = tgUser.username || 'player';
-            state.user.photoUrl = tgUser.photo_url;
+        // Если данные из Telegram не загрузились, используем тестовые данные
+        if (!state.user) {
+            state.user = {
+                id: Date.now(),
+                firstName: 'Тестовый',
+                username: 'test_user',
+                balance: 1000
+            };
         }
         
         // Обновляем интерфейс
         updateUI();
+        return state.user;
         
     } catch (error) {
         console.error('Ошибка при загрузке данных пользователя:', error);
         utils.showNotification('Не удалось загрузить данные', 'error');
+        throw error; // Пробрасываем ошибку для обработки в вызывающем коде
     }
 }
 
@@ -818,8 +875,28 @@ function setupEventDelegation() {
     
     // Инициализация при загрузке страницы
     document.addEventListener('DOMContentLoaded', () => {
-        // Добавляем класс loaded для плавного появления
-        document.body.classList.add('loaded');
+        // Инициализация интерфейса
+        try {
+            ui.init();
+            
+            // Загружаем данные пользователя
+            loadUserData().then(() => {
+                // Показываем главную страницу
+                ui.loadHomePage();
+                updateUI();
+                
+                // Показываем контент
+                document.body.classList.add('loaded');
+            }).catch(error => {
+                console.error('Ошибка загрузки данных:', error);
+                utils.showNotification('Ошибка загрузки данных', 'error');
+                document.body.classList.add('loaded');
+            });
+        } catch (error) {
+            console.error('Ошибка инициализации:', error);
+            utils.showNotification('Ошибка инициализации', 'error');
+            document.body.classList.add('loaded');
+        }
     });
     
     // Обработка нажатия на карточки
