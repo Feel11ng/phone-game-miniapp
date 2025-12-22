@@ -8,36 +8,91 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Добро пожаловать в Phone Tycoon!</h1>
-
-        <div class="balance-section">
-            <p>Ваши Сигналы: <span id="signals-count">Загрузка...</span></p>
-        </div>
-
-        <div class="section" id="inventory-section">
-            <h2>Ваша коллекция</h2>
-            <div id="inventory-list" class="phone-grid">
-                <!-- Телефоны будут вставлены сюда динамически -->
-                <p id="inventory-loading">Загрузка...</p>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>📱 Phone Tycoon</h1>
+            <div class="balance-display">
+                <span class="signal-icon">⚡</span>
+                <span id="signals-count">100</span>
             </div>
-        </div>
+        </header>
 
-        <div class="section" id="cases-section">
-            <h2>Открыть кейс</h2>
-            <button id="open-case-btn">Открыть Базовый кейс (50 Сигналов)</button>
-            <div id="case-result" style="display:none;">
-                <h3>Поздравляем!</h3>
-                <img id="result-phone-img" src="" alt="Новый телефон">
-                <p id="result-phone-name"></p>
+        <!-- Main Content -->
+        <main class="app-content">
+            <!-- Tab Navigation -->
+            <div class="tabs">
+                <button class="tab-button active" data-tab="inventory">Коллекция</button>
+                <button class="tab-button" data-tab="cases">Кейсы</button>
+                <button class="tab-button" data-tab="market">Рынок</button>
             </div>
-        </div>
 
-        <div class="section" id="market-section">
-            <h2>Рынок</h2>
-            <p>Здесь можно торговать телефонами.</p>
-        </div>
+            <!-- Inventory Tab -->
+            <section id="inventory-tab" class="tab-content active">
+                <h2>Ваша коллекция</h2>
+                <div id="inventory-list" class="phone-grid">
+                    <!-- Телефоны будут вставлены сюда -->
+                    <p id="inventory-loading">Загрузка...</p>
+                </div>
+            </section>
 
+            <!-- Cases Tab -->
+            <section id="cases-tab" class="tab-content">
+                <h2>Открыть кейс</h2>
+                <div class="case-selector">
+                    <div class="case-card" data-case="basic">
+                        <img src="images/phones/case_basic.jpg" alt="Базовый кейс">
+                        <h3>Базовый кейс</h3>
+                        <p>50 Сигналов</p>
+                    </div>
+                    <div class="case-card" data-case="epic">
+                        <img src="images/phones/case_epic.jpg" alt="Эпический кейс">
+                        <h3>Эпический кейс</h3>
+                        <p>200 Сигналов</p>
+                    </div>
+                    <div class="case-card" data-case="legendary">
+                        <img src="images/phones/case_legendary.jpg" alt="Легендарный кейс">
+                        <h3>Легендарный кейс</h3>
+                        <p>500 Сигналов</p>
+                    </div>
+                </div>
+                <div id="case-result" class="case-result hidden">
+                    <h3>🎉 Поздравляем!</h3>
+                    <img id="result-phone-img" src="" alt="Новый телефон">
+                    <p id="result-phone-name"></p>
+                    <p id="result-rarity"></p>
+                    <button id="close-result-btn">Закрыть</button>
+                </div>
+            </section>
+
+            <!-- Market Tab -->
+            <section id="market-tab" class="tab-content">
+                <h2>Рынок</h2>
+                <div class="market-list">
+                    <div class="market-item">
+                        <img src="images/phones/iphone_15_pro_max.jpg" alt="iPhone 15 Pro Max">
+                        <div class="market-info">
+                            <h3>iPhone 15 Pro Max</h3>
+                            <p>Цена: 1000 Сигналов</p>
+                            <button>Купить</button>
+                        </div>
+                    </div>
+                    <div class="market-item">
+                        <img src="images/phones/samsung_s24_ultra.jpg" alt="Samsung Galaxy S24 Ultra">
+                        <div class="market-info">
+                            <h3>Samsung Galaxy S24 Ultra</h3>
+                            <p>Цена: 900 Сигналов</p>
+                            <button>Купить</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>@phonetycoonbot</p>
+        </footer>
     </div>
 
     <script src="script.js"></script>
