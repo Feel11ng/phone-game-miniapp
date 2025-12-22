@@ -198,6 +198,8 @@ const eventHandlers = {
         const caseId = parseInt(button.dataset.caseId);
         const caseData = state.cases.find(c => c.id === caseId);
         
+        console.log('Попытка открыть кейс:', caseId, caseData);
+        
         if (!caseData) {
             console.error('Кейс не найден:', caseId);
             utils.showNotification('Ошибка: кейс не найден', 'error');
@@ -216,11 +218,18 @@ const eventHandlers = {
         button.innerHTML = '<div class="spinner"></div>';
         
         try {
-            // Имитация задержки открытия кейса (от 1.5 до 3 секунд)
-            await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1500));
+            console.log('Начинаем открытие кейса...');
+            
+            // Имитация задержки открытия кейса
+            await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
             
             // Выбираем случайный приз с учетом вероятностей
             const prize = utils.weightedRandom(caseData.items);
+            console.log('Выпал приз:', prize);
+            
+            if (!prize) {
+                throw new Error('Не удалось определить приз');
+            }
             
             // Создаем объект приза
             const newPhone = {
@@ -236,21 +245,46 @@ const eventHandlers = {
             
             // Обновляем баланс
             state.user.signals -= caseData.price;
+            
+            // Обновляем интерфейс
             updateUI();
             
             // Показываем анимацию выигрыша
-            ui.showPrizeAnimation(newPhone);
+            const modal = document.querySelector('.case-result-modal');
+            if (modal) {
+                const prizeImage = modal.querySelector('#result-phone-img');
+                const prizeName = modal.querySelector('#result-phone-name');
+                const prizeRarity = modal.querySelector('.prize-rarity');
+                
+                if (prizeImage) prizeImage.src = newPhone.image;
+                if (prizeImage) prizeImage.alt = newPhone.name;
+                if (prizeName) prizeName.textContent = newPhone.name;
+                if (prizeRarity) {
+                    prizeRarity.textContent = getRarityName(newPhone.rarity);
+                    prizeRarity.className = `prize-rarity rarity-${newPhone.rarity}`;
+                }
+                
+                // Показываем модальное окно
+                modal.classList.add('active');
+                
+                // Добавляем анимацию конфетти
+                const confettiContainer = modal.querySelector('.prize-animation');
+                if (confettiContainer) {
+                    createConfetti(confettiContainer);
+                }
+                
+                // Закрытие по клику вне контента
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.classList.remove('active');
+                    }
+                });
+            }
             
             // Добавляем запись в историю
             ui.addActivity(`Открыт кейс "${caseData.name}" и получен ${prize.name}`);
             
-            // Обновляем счетчик телефонов в профиле
-            if (elements.totalPhones) {
-                elements.totalPhones.textContent = state.user.inventory.length;
-            }
-            
-            // В реальном приложении здесь был бы вызов API для сохранения изменений
-            console.log('Открыт кейс, получен приз:', newPhone);
+            console.log('Кейс успешно открыт, получен приз:', newPhone);
             
         } catch (error) {
             console.error('Ошибка при открытии кейса:', error);
@@ -386,18 +420,20 @@ const ui = {
     
     // Загрузка инвентаря
     loadInventory: () => {
+        console.log('Загрузка инвентаря...');
         const inventoryList = document.getElementById('inventory-list');
-        if (!inventoryList) return;
+        if (!inventoryList) {
+            console.error('Элемент инвентаря не найден');
+            return;
+        }
         
         // Показываем индикатор загрузки
-        const loadingElement = utils.createElement('div', { class: 'loading-spinner' }, [
-            utils.createElement('div', { class: 'spinner' }),
-            utils.createElement('p', { text: 'Загрузка коллекции...' })
-        ]);
-        
-        // Очищаем и добавляем индикатор загрузки
-        inventoryList.innerHTML = '';
-        inventoryList.appendChild(loadingElement);
+        inventoryList.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Загрузка коллекции...</p>
+            </div>
+        `;
         
         // В реальном приложении здесь был бы запрос к API
         // Пока используем тестовые данные
@@ -411,8 +447,7 @@ const ui = {
         // Имитируем загрузку данных
         setTimeout(() => {
             try {
-                // Очищаем индикатор загрузки
-                inventoryList.innerHTML = '';
+                console.log('Данные инвентаря загружены');
                 
                 if (testInventory.length === 0) {
                     inventoryList.innerHTML = `
@@ -425,41 +460,32 @@ const ui = {
                 }
                 
                 // Создаем сетку для телефонов
-                const grid = utils.createElement('div', { class: 'phone-grid' });
+                const grid = document.createElement('div');
+                grid.className = 'phone-grid';
                 
                 testInventory.forEach(phone => {
-                    const phoneElement = utils.createElement('div', { 
-                        class: 'phone-card',
-                        'data-phone-id': phone.id
-                    }, [
-                        utils.createElement('div', { class: 'phone-image' }, [
-                            utils.createElement('img', { 
-                                src: phone.image, 
-                                alt: phone.name,
-                                loading: 'lazy'
-                            })
-                        ]),
-                        utils.createElement('div', { class: 'phone-info' }, [
-                            utils.createElement('div', { 
-                                class: 'phone-name',
-                                text: phone.name
-                            }),
-                            utils.createElement('div', { 
-                                class: `phone-rarity rarity-${phone.rarity}`,
-                                text: getRarityName(phone.rarity)
-                            })
-                        ])
-                    ]);
+                    const phoneElement = document.createElement('div');
+                    phoneElement.className = 'phone-card';
+                    phoneElement.dataset.phoneId = phone.id;
                     
-                    // Добавляем обработчик клика на карточку телефона
-                    phoneElement.addEventListener('click', () => {
-                        utils.showNotification(`Выбрано: ${phone.name} (${getRarityName(phone.rarity)})`, 'info');
-                    });
+                    phoneElement.innerHTML = `
+                        <div class="phone-image">
+                            <img src="${phone.image}" alt="${phone.name}" loading="lazy">
+                        </div>
+                        <div class="phone-info">
+                            <div class="phone-name">${phone.name}</div>
+                            <div class="phone-rarity rarity-${phone.rarity}">${getRarityName(phone.rarity)}</div>
+                        </div>
+                    `;
                     
                     grid.appendChild(phoneElement);
                 });
                 
+                // Заменяем содержимое инвентаря
+                inventoryList.innerHTML = '';
                 inventoryList.appendChild(grid);
+                
+                console.log('Инвентарь успешно отображен');
                 
             } catch (error) {
                 console.error('Ошибка при загрузке инвентаря:', error);
@@ -469,16 +495,8 @@ const ui = {
                         <button class="btn btn-secondary" id="retry-loading">Попробовать снова</button>
                     </div>
                 `;
-                
-                // Добавляем обработчик для кнопки повтора
-                const retryButton = document.getElementById('retry-loading');
-                if (retryButton) {
-                    retryButton.addEventListener('click', () => {
-                        ui.loadInventory();
-                    });
-                }
             }
-        }, 1000); // Имитация задержки загрузки
+        }, 800); // Уменьшаем задержку для тестирования
     },
     
     // Загрузка рынка
@@ -671,29 +689,108 @@ function updateUI() {
     }
 }
 
+// Функция для делегирования событий
+function setupEventDelegation() {
+    // Обработка кликов по кнопкам открытия кейсов
+    document.addEventListener('click', (e) => {
+        const openCaseBtn = e.target.closest('.open-case-btn');
+        if (openCaseBtn) {
+            eventHandlers.handleOpenCase(e);
+            return;
+        }
+
+        // Обработка кликов по кнопкам навигации
+        const navItem = e.target.closest('.nav-item');
+        if (navItem) {
+            e.preventDefault();
+            const section = navItem.dataset.section;
+            if (section) {
+                // Обновляем активный пункт меню
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.toggle('active', item === navItem);
+                });
+
+                // Показываем выбранную страницу
+                Object.entries(elements.pages).forEach(([id, element]) => {
+                    if (element) {
+                        element.classList.toggle('active', id === section);
+                    }
+                });
+
+                // Обновляем состояние
+                state.currentPage = section;
+
+                // Загружаем данные для страницы
+                if (section === 'inventory') {
+                    ui.loadInventory();
+                } else if (section === 'market') {
+                    ui.loadMarket();
+                } else if (section === 'cases') {
+                    ui.loadCases();
+                } else if (section === 'profile') {
+                    ui.loadProfile();
+                }
+            }
+        }
+    });
+
+    // Обработка кнопок профиля
+    document.addEventListener('click', (e) => {
+        const settingsBtn = e.target.closest('#settings-btn');
+        const helpBtn = e.target.closest('#help-btn');
+        const logoutBtn = e.target.closest('#logout-btn');
+        const closeModalBtn = e.target.closest('.close-modal');
+        const retryBtn = e.target.closest('#retry-loading');
+
+        if (settingsBtn) {
+            utils.showNotification('Настройки скоро будут доступны', 'info');
+        } else if (helpBtn) {
+            utils.showNotification('Обратитесь в поддержку для помощи', 'info');
+        } else if (logoutBtn) {
+            if (confirm('Вы уверены, что хотите выйти?')) {
+                utils.showNotification('Выход выполнен', 'success');
+            }
+        } else if (closeModalBtn) {
+            document.querySelector('.modal.active')?.classList.remove('active');
+        } else if (retryBtn) {
+            ui.loadInventory();
+        }
+    });
+}
+
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
-    // Инициализируем интерфейс
-    ui.init();
+    // Инициализируем делегирование событий
+    setupEventDelegation();
+    
+    // Загружаем данные пользователя
+    loadUserData();
+    
+    // Показываем главную страницу
+    document.querySelector('.nav-item[data-section="home"]')?.classList.add('active');
+    document.getElementById('home-section')?.classList.add('active');
+    
+    // Загружаем начальные данные
+    ui.loadHomePage();
     
     // Инициализируем Telegram Web App
-    if (tg) {
+    if (window.Telegram?.WebApp) {
+        const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
         
-        // Обработка нажатия кнопки "Назад"
+        // Обработка кнопки "Назад"
         tg.BackButton.onClick(() => {
             if (state.currentPage !== 'home') {
                 // Возвращаемся на главную
                 const homeButton = document.querySelector('.nav-item[data-section="home"]');
                 if (homeButton) homeButton.click();
             } else {
-                // Закрываем приложение
                 tg.close();
             }
         });
         
-        // Показываем кнопку "Назад" если не на главной
+        // Обновляем кнопку "Назад" при изменении страницы
         const updateBackButton = () => {
             if (state.currentPage !== 'home') {
                 tg.BackButton.show();
@@ -704,9 +801,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Следим за изменением страниц
         const observer = new MutationObserver(updateBackButton);
-        Object.values(elements.pages).forEach(page => {
-            observer.observe(page, { attributes: true, attributeFilter: ['class'] });
-        });
+        const mainContent = document.getElementById('main-content');
+        if (mainContent) {
+            observer.observe(mainContent, { 
+                childList: true, 
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        }
         
         updateBackButton();
     }
