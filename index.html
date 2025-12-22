@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Phone Tycoon</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Подключаем Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -11,7 +13,12 @@
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">
-            <h1>📱 Phone Tycoon</h1>
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#ffffff"/>
+                </svg>
+                <h1>Phone Tycoon</h1>
+            </div>
             <div class="balance-display">
                 <span class="signal-icon">⚡</span>
                 <span id="signals-count">100</span>
@@ -56,6 +63,21 @@
                         <p>500 Сигналов</p>
                     </div>
                 </div>
+
+                <!-- Рулетка для открытия кейса -->
+                <div id="case-roulette" class="case-roulette hidden">
+                    <div class="roulette-container">
+                        <div class="roulette-wheel" id="roulette-wheel">
+                            <!-- Телефоны будут вставлены сюда динамически -->
+                        </div>
+                    </div>
+                    <div class="roulette-controls">
+                        <button id="start-roulette-btn">Запустить рулетку</button>
+                        <button id="close-roulette-btn">Закрыть</button>
+                    </div>
+                </div>
+
+                <!-- Результат открытия кейса -->
                 <div id="case-result" class="case-result hidden">
                     <h3>🎉 Поздравляем!</h3>
                     <img id="result-phone-img" src="" alt="Новый телефон">
