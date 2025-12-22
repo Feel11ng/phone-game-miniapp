@@ -1,168 +1,39 @@
 // static/script.js
 
+// Импорт утилит
+import { apiService, throttle, debounce } from './api.js';
+import ErrorHandler from './errorHandler.js';
+import AnimationManager from './animations.js';
+import { SoundManager } from './sounds.js';
+
+// Инициализация утилит
+ErrorHandler.init();
+AnimationManager.init();
+const soundManager = new SoundManager();
+
+// Глобальные настройки анимаций
+const ANIMATION_DURATION = 300; // ms
+const TRANSITION_DELAY = 100; // ms
+
 // Инициализация Telegram Web App
 const tg = window.Telegram?.WebApp;
 
-// Состояние приложения
+// Глобальное состояние приложения
 const state = {
-    // Текущая активная вкладка рынка
-    marketTab: 'buy',
-    
-    user: {
-        id: null,
-        firstName: 'Игрок',
-        username: 'player',
-        photoUrl: null,
-        signals: 1000,
-        inventory: [],
-        lastActivity: []
-    },
+    user: null,
+    isLoading: false,
     currentPage: 'home',
-    cases: [
-        {
-            id: 1,
-            name: 'Базовый кейс',
-            price: 50,
-            image: 'https://via.placeholder.com/200',
-            items: [
-                { name: 'Samsung Galaxy A01', rarity: 'common', chance: 0.7 },
-                { name: 'Xiaomi Redmi Note 10', rarity: 'uncommon', chance: 0.2 },
-                { name: 'Google Pixel 8 Pro', rarity: 'rare', chance: 0.08 },
-                { name: 'iPhone 15 Pro Max', rarity: 'legendary', chance: 0.02 }
-            ]
-        },
-        {
-            id: 2,
-            name: 'Премиум кейс',
-            price: 200,
-            image: 'https://via.placeholder.com/200/6c5ce7',
-            items: [
-                { name: 'Samsung Galaxy S23', rarity: 'uncommon', chance: 0.5 },
-                { name: 'Google Pixel 8 Pro', rarity: 'rare', chance: 0.3 },
-                { name: 'iPhone 15 Pro Max', rarity: 'legendary', chance: 0.15 },
-                { name: 'Золотой iPhone 15 Pro Max', rarity: 'mythical', chance: 0.05 }
-            ]
-        }
-    ],
-    marketItems: []
+    cache: new Map(),
+    // Остальные состояния
+    inventory: [],
+    marketItems: [],
+    cases: [],
+    balance: 0,
+    lastUpdated: null
 };
 
-// DOM элементы
-const elements = {
-    // Шапка
-    balanceElement: document.getElementById('signals-count'),
-    userAvatar: document.getElementById('user-avatar'),
-    
-    // Основной контент
-    mainContent: document.getElementById('main-content'),
-    
-    // Навигация
-    navItems: document.querySelectorAll('.nav-item'),
-    
-    // Страницы
-    pages: {
-        home: document.getElementById('home-section'),
-        inventory: document.getElementById('inventory-section'),
-        cases: document.getElementById('cases-section'),
-        market: document.getElementById('market-section'),
-        profile: document.getElementById('profile-section')
-    },
-    
-    // Элементы профиля
-    profileUsername: document.getElementById('username'),
-    profileAvatar: document.getElementById('profile-avatar'),
-    totalPhones: document.getElementById('total-phones'),
-    totalCases: document.getElementById('total-cases'),
-    totalSales: document.getElementById('total-sales'),
-    
-    // Уведомления
-    notification: document.getElementById('notification')
-};
-
-// Утилиты
-const utils = {
-    // Форматирование чисел с разделителями
-    formatNumber: (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' '),
-    
-    // Генерация случайного числа в диапазоне
-    randomInRange: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-    
-    // Выбор случайного элемента с учетом вероятностей
-    weightedRandom: (items) => {
-        let total = items.reduce((sum, item) => sum + item.chance, 0);
-        const random = Math.random() * total;
-        let current = 0;
-        
-        for (const item of items) {
-            current += item.chance;
-            if (random <= current) return item;
-        }
-        
-        return items[items.length - 1];
-    },
-    
-    // Показать уведомление
-    showNotification: (message, type = 'info', duration = 3000) => {
-        const notification = elements.notification;
-        notification.textContent = message;
-        notification.className = `notification show ${type}`;
-        
-        setTimeout(() => {
-            notification.classList.remove('show');
-        }, duration);
-    },
-    
-    // Анимация появления элемента
-    fadeIn: (element, duration = 300) => {
-        element.style.opacity = 0;
-        element.style.display = 'block';
-        let start = null;
-        
-        const step = (timestamp) => {
-            if (!start) start = timestamp;
-            const progress = timestamp - start;
-            const opacity = Math.min(progress / duration, 1);
-            element.style.opacity = opacity;
-            
-            if (progress < duration) {
-                window.requestAnimationFrame(step);
-            }
-        };
-        
-        window.requestAnimationFrame(step);
-    },
-    
-    // Создание элемента с атрибутами
-    createElement: (tag, attributes = {}, children = []) => {
-        const element = document.createElement(tag);
-        
-        for (const [key, value] of Object.entries(attributes)) {
-            if (key === 'text') {
-                element.textContent = value;
-            } else if (key === 'html') {
-                element.innerHTML = value;
-            } else if (key === 'class') {
-                element.className = value;
-            } else if (key === 'style') {
-                Object.assign(element.style, value);
-            } else {
-                element.setAttribute(key, value);
-            }
-        }
-        
-        if (Array.isArray(children)) {
-            children.forEach(child => {
-                if (child instanceof Node) {
-                    element.appendChild(child);
-                } else if (typeof child === 'string') {
-                    element.appendChild(document.createTextNode(child));
-                }
-            });
-        }
-        
-        return element;
-    }
-};
+// Оборачиваем основные функции в обработчик ошибок
+const safeCall = ErrorHandler.withErrorHandling;
 
 // Обработчики событий
 const eventHandlers = {
@@ -308,6 +179,25 @@ const eventHandlers = {
     }
 };
 
+// Утилиты для работы с интерфейсом
+const utils = {
+    showNotification: function(message, type = 'info') {
+        // Создаем уведомление
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        
+        // Добавляем в DOM
+        document.body.appendChild(notification);
+        
+        // Автоматически скрываем через 3 секунды
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+};
+
 // Функции для работы с интерфейсом
 const ui = {
     // Фильтрация инвентаря
@@ -447,86 +337,37 @@ const ui = {
         });
     },
     
-    // Загрузка инвентаря
-    loadInventory: () => {
-        console.log('Загрузка инвентаря...');
-        const inventoryList = document.getElementById('inventory-list');
-        if (!inventoryList) {
-            console.error('Элемент инвентаря не найден');
-            return;
-        }
+    // Функция для загрузки инвентаря с ленивой загрузкой
+    loadInventory: safeCall(async function() {
+        if (state.isLoading) return;
         
-        // Показываем индикатор загрузки
-        inventoryList.innerHTML = `
-            <div class="loading-spinner">
-                <div class="spinner"></div>
-                <p>Загрузка коллекции...</p>
-            </div>
-        `;
-        
-        // В реальном приложении здесь был бы запрос к API
-        // Пока используем тестовые данные
-        const testInventory = [
-            { id: 1, name: 'Samsung Galaxy A01', rarity: 'common', image: 'https://via.placeholder.com/150?text=Samsung+A01' },
-            { id: 2, name: 'iPhone 15 Pro Max', rarity: 'legendary', image: 'https://via.placeholder.com/150?text=iPhone+15+Pro+Max' },
-            { id: 3, name: 'Xiaomi Redmi Note 10', rarity: 'uncommon', image: 'https://via.placeholder.com/150?text=Xiaomi+Note+10' },
-            { id: 4, name: 'Google Pixel 8 Pro', rarity: 'rare', image: 'https://via.placeholder.com/150?text=Pixel+8+Pro' }
-        ];
-        
-        // Имитируем загрузку данных
-        setTimeout(() => {
-            try {
-                console.log('Данные инвентаря загружены');
-                
-                if (testInventory.length === 0) {
-                    inventoryList.innerHTML = `
-                        <div class="empty-state">
-                            <p>Ваш инвентарь пуст</p>
-                            <p>Откройте кейсы, чтобы получить телефоны</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                // Создаем сетку для телефонов
-                const grid = document.createElement('div');
-                grid.className = 'phone-grid';
-                
-                testInventory.forEach(phone => {
-                    const phoneElement = document.createElement('div');
-                    phoneElement.className = 'phone-card';
-                    phoneElement.dataset.phoneId = phone.id;
-                    
-                    phoneElement.innerHTML = `
-                        <div class="phone-image">
-                            <img src="${phone.image}" alt="${phone.name}" loading="lazy">
-                        </div>
-                        <div class="phone-info">
-                            <div class="phone-name">${phone.name}</div>
-                            <div class="phone-rarity rarity-${phone.rarity}">${getRarityName(phone.rarity)}</div>
-                        </div>
-                    `;
-                    
-                    grid.appendChild(phoneElement);
-                });
-                
-                // Заменяем содержимое инвентаря
-                inventoryList.innerHTML = '';
-                inventoryList.appendChild(grid);
-                
-                console.log('Инвентарь успешно отображен');
-                
-            } catch (error) {
-                console.error('Ошибка при загрузке инвентаря:', error);
-                inventoryList.innerHTML = `
-                    <div class="error-state">
-                        <p>Произошла ошибка при загрузке инвентаря</p>
-                        <button class="btn btn-secondary" id="retry-loading">Попробовать снова</button>
-                    </div>
-                `;
+        try {
+            state.isLoading = true;
+            
+            // Показываем скелетон загрузки
+            const container = document.getElementById('inventory-container');
+            if (container) {
+                container.innerHTML = '';
+                container.append(AnimationManager.createSkeletonLoader(5, { 
+                    height: '60px',
+                    style: { marginBottom: '1rem', borderRadius: '8px' }
+                }));
             }
-        }, 800); // Уменьшаем задержку для тестирования
-    },
+            
+            // Загружаем данные с кешированием
+            const inventory = await apiService.get('/user/inventory');
+            
+            // Рендерим инвентарь
+            renderInventory(inventory);
+            
+            return inventory;
+        } catch (error) {
+            console.error('Ошибка загрузки инвентаря:', error);
+            throw error;
+        } finally {
+            state.isLoading = false;
+        }
+    }, 'Не удалось загрузить инвентарь'),
     
     // Загрузка рынка
     loadMarket: () => {
@@ -923,13 +764,93 @@ function updateUI() {
     }
 }
 
-// Функция для делегирования событий
+// Функция для делегирования событий с улучшенной обработкой
 function setupEventDelegation() {
-    // Обработка переключения вкладок рынка
+    // Обработка кликов по кнопкам
     document.addEventListener('click', (e) => {
-        const tabBtn = e.target.closest('.market-tabs .tab-btn');
+        // Обработка всех кликов по кнопкам с анимацией
+        const button = e.target.closest('button, .btn, .action-card, .nav-item');
+        if (button && !button.hasAttribute('disabled')) {
+            // Воспроизводим звук клика
+            soundManager.play('buttonClick');
+            
+            // Добавляем визуальную обратную связь
+            button.classList.add('active');
+            setTimeout(() => {
+                button.classList.remove('active');
+            }, 200);
+            
+            // Вибрация (если доступно)
+            soundManager.hapticFeedback('light');
+        }
+        
+        // Обработка навигации
+        const navLink = e.target.closest('[data-section]');
+        if (navLink) {
+            e.preventDefault();
+            const section = navLink.dataset.section;
+            navigateTo(section);
+        }
+        
+        // Обработка вкладок
+        const tabBtn = e.target.closest('.tab-btn');
         if (tabBtn) {
             e.preventDefault();
+            const tabId = tabBtn.dataset.tab;
+            switchTab(tabId);
+        }
+    });
+    
+    // Обработка наведения на интерактивные элементы
+    document.addEventListener('mouseover', (e) => {
+        const interactive = e.target.closest('.hover-effect, .btn, .card, .action-card');
+        if (interactive) {
+            interactive.classList.add('hover-active');
+        }
+    });
+    
+    document.addEventListener('mouseout', (e) => {
+        const interactive = e.target.closest('.hover-effect, .btn, .card, .action-card');
+        if (interactive) {
+            interactive.classList.remove('hover-active');
+        }
+    });
+    
+    // Обработка нажатия на карточки
+    document.addEventListener('mousedown', (e) => {
+        const pressable = e.target.closest('.pressable, .card, .btn');
+        if (pressable) {
+            pressable.classList.add('pressed');
+        }
+    });
+    
+    document.addEventListener('mouseup', () => {
+        const pressed = document.querySelectorAll('.pressed');
+        pressed.forEach(el => el.classList.remove('pressed'));
+    });
+    
+    // Обработка касаний на мобильных устройствах
+    document.addEventListener('touchstart', (e) => {
+        const touchTarget = e.target.closest('.touch-feedback');
+        if (touchTarget) {
+            touchTarget.classList.add('touch-active');
+            soundManager.hapticFeedback('light');
+        }
+    }, { passive: true });
+    
+    document.addEventListener('touchend', () => {
+        const activeTouch = document.querySelectorAll('.touch-active');
+        activeTouch.forEach(el => el.classList.remove('touch-active'));
+    }, { passive: true });
+    
+    // Инициализация перетаскивания для карточек
+    initDragAndDrop();
+}
+// Обработка переключения вкладок рынка
+document.addEventListener('click', (e) => {
+    const tabBtn = e.target.closest('.market-tabs .tab-btn');
+    if (tabBtn) {
+        e.preventDefault();
             const tabId = tabBtn.dataset.tab;
             
             // Обновляем активную вкладку
@@ -1007,11 +928,11 @@ function setupEventDelegation() {
     });
     
     // Обработка кликов по кнопкам открытия кейсов
-    document.addEventListener('click', (e) => {
-        const openCaseBtn = e.target.closest('.open-case-btn');
-        if (openCaseBtn) {
-            eventHandlers.handleOpenCase(e);
-            return;
+document.addEventListener('click', (e) => {
+    const openCaseBtn = e.target.closest('.open-case-btn');
+    if (openCaseBtn) {
+        eventHandlers.handleOpenCase(e);
+        return;
         }
 
         // Обработка кликов по кнопкам навигации в нижнем меню
@@ -1087,74 +1008,31 @@ function setupEventDelegation() {
 
         if (settingsBtn) {
             utils.showNotification('Настройки скоро будут доступны', 'info');
+            soundManager.play('notification');
         } else if (helpBtn) {
             utils.showNotification('Обратитесь в поддержку для помощи', 'info');
+            soundManager.play('notification');
         } else if (logoutBtn) {
             if (confirm('Вы уверены, что хотите выйти?')) {
                 utils.showNotification('Выход выполнен', 'success');
+                soundManager.play('success');
+                // Здесь можно добавить логику выхода
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.close();
+                }
             }
         } else if (closeModalBtn) {
-            document.querySelector('.modal.active')?.classList.remove('active');
-        } else if (retryBtn) {
-            ui.loadInventory();
+            const modal = closeModalBtn.closest('.modal');
+            if (modal) {
+                modal.classList.remove('active');
+            soundManager.play('buttonClick');
         }
-    });
-}
-
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-    // Инициализируем делегирование событий
-    setupEventDelegation();
-    
-    // Загружаем данные пользователя
-    loadUserData();
-    
-    // Показываем главную страницу
-    document.querySelector('.nav-item[data-section="home"]')?.classList.add('active');
-    document.getElementById('home-section')?.classList.add('active');
-    
-    // Загружаем начальные данные
-    ui.loadHomePage();
-    
-    // Инициализируем Telegram Web App
-    if (window.Telegram?.WebApp) {
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
-        
-        // Обработка кнопки "Назад"
-        tg.BackButton.onClick(() => {
-            if (state.currentPage !== 'home') {
-                // Возвращаемся на главную
-                const homeButton = document.querySelector('.nav-item[data-section="home"]');
-                if (homeButton) homeButton.click();
-            } else {
-                tg.close();
-            }
+    } else if (retryBtn) {
+        soundManager.play('buttonClick');
+        ui.loadInventory().catch(error => {
+            console.error('Ошибка при загрузке инвентаря:', error);
+            utils.showNotification('Не удалось загрузить инвентарь', 'error');
         });
-        
-        // Обновляем кнопку "Назад" при изменении страницы
-        const updateBackButton = () => {
-            if (state.currentPage !== 'home') {
-                tg.BackButton.show();
-            } else {
-                tg.BackButton.hide();
-            }
-        };
-        
-        // Следим за изменением страниц
-        const observer = new MutationObserver(updateBackButton);
-        const mainContent = document.getElementById('main-content');
-        if (mainContent) {
-            observer.observe(mainContent, { 
-                childList: true, 
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['class']
-            });
-        }
-        
-        updateBackButton();
     }
 });
 
