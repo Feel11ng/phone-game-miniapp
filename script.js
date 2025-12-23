@@ -1,65 +1,644 @@
 // static/script.js
 
 // Импорт утилит
-import { apiService, throttle, debounce } from './api.js';
-import ErrorHandler from './errorHandler.js';
+import { apiService } from './api.js';
 import AnimationManager from './animations.js';
-import { SoundManager } from './sounds.js';
 
-// Инициализация утилит
-ErrorHandler.init();
-AnimationManager.init();
-const soundManager = new SoundManager();
-
-// Глобальные настройки анимаций
-const ANIMATION_DURATION = 300; // ms
-const TRANSITION_DELAY = 100; // ms
-
-// Инициализация Telegram Web App
-const tg = window.Telegram?.WebApp;
-
-// Глобальное состояние приложения
+/**
+ * Основное состояние приложения
+ * @type {Object}
+ */
 const state = {
-    user: null,
+    user: {
+        id: null,
+        firstName: 'Гость',
+        username: 'guest',
+        photoUrl: null,
+        signals: 0,
+        inventory: []
+    },
     isLoading: false,
     currentPage: 'home',
-    cache: new Map(),
-    // Остальные состояния
-    inventory: [],
-    marketItems: [],
-    cases: [],
-    balance: 0,
-    lastUpdated: null
+    cases: []
 };
 
-// Оборачиваем основные функции в обработчик ошибок
-const safeCall = ErrorHandler.withErrorHandling;
+/**
+ * Основные элементы интерфейса
+ * @type {Object}
+ */
+const elements = {};
 
-// Обработчики событий
-const eventHandlers = {
-    // Переключение между страницами
-    handleNavigation: (e) => {
-        e.preventDefault();
-        const targetSection = e.currentTarget.dataset.section;
+/**
+ * Глобальные настройки приложения
+ * @type {Object}
+ */
+const settings = {
+    ANIMATION_DURATION: 300, // ms
+    TRANSITION_DELAY: 100, // ms
+    API_TIMEOUT: 10000 // ms
+};
+
+// Инициализация Telegram Web App
+let tg = window.Telegram?.WebApp;
+
+/**
+ * Утилиты приложения
+ * @type {Object}
+ */
+const utils = {
+    /**
+     * Форматирует число с разделителями разрядов
+     * @param {number} num - Число для форматирования
+     * @returns {string} Отформатированная строка
+     */
+    formatNumber: (num) => {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    },
+    
+    /**
+     * Показывает уведомление
+     * @param {string} message - Текст уведомления
+     * @param {string} [type='info'] - Тип уведомления (info, success, error)
+     */
+    showNotification: (message, type = 'info') => {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
         
-        // Обновляем активный пункт меню
-        elements.navItems.forEach(item => {
-            item.classList.toggle('active', item.dataset.section === targetSection);
+        // Автоматическое скрытие уведомления
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    },
+    
+    /**
+     * Создает эффект конфетти
+     * @param {HTMLElement} container - Контейнер для конфетти
+     */
+    createConfetti: (container) => {
+        if (!container) return;
+        
+        // Очищаем предыдущие конфетти
+        container.innerHTML = '';
+        
+        // Создаем 50 конфетти
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            
+            // Случайные цвета
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Случайные размеры и позиции
+            const size = Math.random() * 10 + 5;
+            const posX = Math.random() * 100;
+            const animationDuration = Math.random() * 3 + 2;
+            
+            // Применяем стили
+            Object.assign(confetti.style, {
+                position: 'absolute',
+                width: `${size}px`,
+                height: `${size}px`,
+                backgroundColor: randomColor,
+                left: `${posX}%`,
+                top: '-20px',
+                borderRadius: '50%',
+                animation: `fall ${animationDuration}s linear forwards`,
+                zIndex: 1000
+            });
+            
+            // Добавляем анимацию падения
+            const keyframes = `
+                @keyframes fall {
+                    to {
+                        transform: translateY(calc(100vh + 20px));
+                        opacity: 0;
+                    }
+                }
+            `;
+            
+            // Добавляем стили анимации
+            const style = document.createElement('style');
+            style.type = 'text/css';
+            style.appendChild(document.createTextNode(keyframes));
+            document.head.appendChild(style);
+            
+            container.appendChild(confetti);
+            
+            // Удаляем конфетти после анимации
+            setTimeout(() => {
+                confetti.remove();
+            }, animationDuration * 1000);
+        }
+    },
+    
+    randomInRange: (min, max) => {
+        const minNum = Number(min);
+        const maxNum = Number(max);
+        return Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+    },
+    
+    createElement: (tag, attrs = {}, children = []) => {
+        const el = document.createElement(tag);
+
+        if (attrs && typeof attrs === 'object') {
+            Object.entries(attrs).forEach(([key, value]) => {
+                if (key === 'class') {
+                    el.className = value;
+                } else if (key === 'text') {
+                    el.textContent = value;
+                } else if (key === 'html') {
+                    el.innerHTML = value;
+                } else if (key === 'style' && value && typeof value === 'object') {
+                    Object.assign(el.style, value);
+                } else if (value !== undefined && value !== null) {
+                    el.setAttribute(key, value);
+                }
+            });
+        }
+
+        const list = Array.isArray(children) ? children : [children];
+        list.forEach((child) => {
+            if (child === undefined || child === null) return;
+            if (child instanceof Node) {
+                el.appendChild(child);
+            } else {
+                el.appendChild(document.createTextNode(String(child)));
+            }
+        });
+
+        return el;
+    }
+};
+
+function safeCall(fn, errorMessage = 'Произошла ошибка') {
+    return async (...args) => {
+        try {
+            return await fn(...args);
+        } catch (error) {
+            console.error(errorMessage, error);
+            try {
+                utils.showNotification(errorMessage, 'error');
+            } catch (_) {
+                // ignore
+            }
+            throw error;
+        }
+    };
+}
+
+/**
+ * Основной объект приложения
+ */
+const app = {
+    // Функция для создания эффекта конфетти
+    createConfetti: function(container) {
+        if (!container) return;
+        
+        // Очищаем предыдущие конфетти
+        container.innerHTML = '';
+        
+        // Создаем 50 конфетти
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            
+            // Случайные цвета
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Случайные размеры и позиции
+            const size = Math.random() * 10 + 5;
+            const posX = Math.random() * 100;
+            const animationDuration = Math.random() * 3 + 2;
+            
+            // Применяем стили
+            Object.assign(confetti.style, {
+                position: 'absolute',
+                width: `${size}px`,
+                height: `${size}px`,
+                backgroundColor: randomColor,
+                left: `${posX}%`,
+                top: '-20px',
+                borderRadius: '50%',
+                animation: `fall ${animationDuration}s linear forwards`,
+                zIndex: 1000
+            });
+            
+            // Добавляем анимацию падения
+            const keyframes = `
+                @keyframes fall {
+                    to {
+                        transform: translateY(calc(100vh + 20px));
+                        opacity: 0;
+                    }
+                }
+            `;
+            
+            // Добавляем стили анимации
+            const style = document.createElement('style');
+            style.type = 'text/css';
+            style.appendChild(document.createTextNode(keyframes));
+            document.head.appendChild(style);
+            
+            container.appendChild(confetti);
+            
+            // Удаляем конфетти после анимации
+            setTimeout(() => {
+                confetti.remove();
+            }, animationDuration * 1000);
+        }
+    },
+
+    // Инициализация интерфейса
+    init: async function() {
+        console.log('Инициализация интерфейса...');
+        
+        // Инициализируем элементы
+        initElements();
+        
+        // Настройка навигации
+        if (elements.navItems) {
+            elements.navItems.forEach(item => {
+                item.addEventListener('click', eventHandlers.handleNavigation);
+            });
+            console.log('Навигация инициализирована');
+        }
+        
+        // Показываем начальную страницу
+        this.showPage('home');
+        
+        return true;
+    },
+    
+    // Показать страницу
+    showPage: function(pageId) {
+        // Скрываем все страницы
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
         });
         
         // Показываем выбранную страницу
-        Object.entries(elements.pages).forEach(([id, element]) => {
-            element.classList.toggle('active', id === targetSection);
+        const page = document.querySelector(`#${pageId}-section`);
+        if (page) {
+            page.classList.add('active');
+            state.currentPage = pageId;
+            
+            // Обновляем активную кнопку навигации
+            document.querySelectorAll('.nav-item').forEach(item => {
+                if (item.dataset.section === pageId) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // Загружаем контент страницы
+            this[`load${pageId.charAt(0).toUpperCase() + pageId.slice(1)}Page`]?.();
+        }
+    },
+    
+    // Загрузка главной страницы
+    loadHomePage: function() {
+        console.log('Загрузка главной страницы...');
+        // Здесь будет загрузка данных для главной страницы
+        this.updateUI();
+    },
+    
+    // Загрузка страницы кейсов
+    loadCasesPage: function() {
+        console.log('Загрузка страницы кейсов...');
+        // Здесь будет загрузка данных для страницы кейсов
+        this.updateUI();
+    },
+    
+    // Загрузка инвентаря
+    loadInventoryPage: function() {
+        console.log('Загрузка инвентаря...');
+        // Здесь будет загрузка данных инвентаря
+        this.updateUI();
+    },
+    
+    // Загрузка маркетплейса
+    loadMarketPage: function() {
+        console.log('Загрузка маркетплейса...');
+        // Здесь будет загрузка данных маркетплейса
+        this.updateUI();
+    },
+    
+    // Обновление интерфейса
+    updateUI: function() {
+        console.log('Обновление интерфейса...');
+        
+        // Обновляем баланс, если элемент существует
+        if (elements.balanceElement && state.user) {
+            elements.balanceElement.textContent = utils.formatNumber(state.user.signals || 0);
+        }
+        
+        // Обновляем аватар, если элемент существует
+        if (elements.profileAvatar && state.user) {
+            if (state.user.photoUrl) {
+                elements.profileAvatar.style.backgroundImage = `url(${state.user.photoUrl})`;
+                elements.profileAvatar.textContent = '';
+            } else {
+                elements.profileAvatar.textContent = state.user.firstName ? state.user.firstName[0].toUpperCase() : 'G';
+            }
+        }
+    },
+    
+    // Показать уведомление
+    showNotification: function(message, type = 'info') {
+        utils.showNotification(message, type);
+    }
+};
+
+/**
+ * Инициализирует приложение
+ * @returns {Promise<void>}
+ */
+async function initApp() {
+    console.log('Инициализация приложения...');
+    
+    try {
+        // Инициализация Telegram WebApp
+        if (window.Telegram?.WebApp) {
+            tg.expand();
+            
+            // Загружаем данные пользователя из Telegram
+            const initData = new URLSearchParams(tg.initData || '');
+            const userData = JSON.parse(initData.get('user') || '{}');
+            
+            if (userData) {
+                state.user = {
+                    id: userData.id,
+                    firstName: userData.first_name || 'Пользователь',
+                    username: userData.username || `user_${userData.id}`,
+                    photoUrl: userData.photo_url,
+                    signals: 0,
+                    inventory: []
+                };
+            }
+        } else {
+            // Для отладки, если приложение запущено не в Telegram
+            state.user = {
+                id: 'test-' + Math.random().toString(36).substr(2, 9),
+                firstName: 'Тестовый',
+                username: 'test-user',
+                signals: 500,
+                inventory: []
+            };
+            console.log('Используется тестовый пользователь');
+        }
+        
+        // Инициализация интерфейса
+        await app.init();
+        await ui.init();
+        
+        // Обновляем UI
+        ui.updateUI();
+        
+        console.log('Приложение успешно инициализировано');
+        return true;
+        
+    } catch (error) {
+        console.error('Ошибка при инициализации приложения:', error);
+        
+        // Показываем сообщение об ошибке
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'error-message';
+        errorMessage.innerHTML = `
+            <h3>Произошла ошибка</h3>
+            <p>${error.message || 'Неизвестная ошибка'}</p>
+            <button onclick="window.location.reload()">Обновить страницу</button>
+        `;
+        
+        document.body.innerHTML = '';
+        document.body.appendChild(errorMessage);
+        document.body.style.padding = '20px';
+        
+        return false;
+    }
+}
+
+/**
+ * Инициализирует элементы интерфейса
+ */
+function initElements() {
+    // Навигация
+    elements.navItems = document.querySelectorAll('.nav-item');
+    elements.mainContent = document.querySelector('.main-content');
+    
+    // Профиль
+    elements.profileAvatar = document.querySelector('.profile-avatar');
+    elements.balanceElement = document.querySelector('.balance-value');
+    
+    // Модальные окна
+    elements.modal = document.querySelector('.modal');
+    elements.closeModal = document.querySelector('.close-modal');
+    
+    // Секции страниц
+    elements.homeSection = document.querySelector('#home-section');
+    elements.casesSection = document.querySelector('#cases-section');
+    elements.inventorySection = document.querySelector('#inventory-section');
+    elements.marketSection = document.querySelector('#market-section');
+}
+
+/**
+ * Настраивает обработчики событий
+ */
+function setupEventListeners() {
+    // Обработка навигации
+    document.addEventListener('click', (e) => {
+        // Навигация по страницам
+        const navItem = e.target.closest('.nav-item');
+        if (navItem) {
+            e.preventDefault();
+            const pageId = navItem.dataset.section;
+            if (pageId) {
+                app.showPage(pageId);
+            }
+            return;
+        }
+        
+        // Обработка кнопок открытия кейсов
+        const openCaseBtn = e.target.closest('.open-case-btn');
+        if (openCaseBtn) {
+            e.preventDefault();
+            handleOpenCase(e);
+            return;
+        }
+        
+        // Обработка вкладок маркета
+        const tabBtn = e.target.closest('.market-tabs .tab-btn');
+        if (tabBtn) {
+            e.preventDefault();
+            const tabId = tabBtn.dataset.tab;
+            handleMarketTabChange(tabId);
+            return;
+        }
+    });
+    
+    // Обработка закрытия модального окна
+    if (elements.closeModal) {
+        elements.closeModal.addEventListener('click', () => {
+            if (elements.modal) {
+                elements.modal.style.display = 'none';
+            }
+        });
+    }
+}
+
+/**
+ * Показывает указанную страницу
+ * @param {string} pageId - Идентификатор страницы
+ */
+function showPage(pageId) {
+    // Скрываем все страницы
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    
+    // Показываем выбранную страницу
+    const page = document.querySelector(`#${pageId}-section`);
+    if (page) {
+        page.classList.add('active');
+        state.currentPage = pageId;
+        
+        // Обновляем активную кнопку навигации
+        document.querySelectorAll('.nav-item').forEach(item => {
+            if (item.dataset.section === pageId) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
         });
         
-        // Обновляем состояние
-        state.currentPage = targetSection;
+        // Загружаем данные страницы
+        loadPageData(pageId);
+    }
+}
+
+/**
+ * Загружает данные для указанной страницы
+ * @param {string} pageId - Идентификатор страницы
+ */
+async function loadPageData(pageId) {
+    try {
+        state.isLoading = true;
         
-        // Загружаем данные для страницы, если нужно
-        if (targetSection === 'inventory') {
-            loadInventory();
-        } else if (targetSection === 'market') {
-            loadMarket();
+        switch (pageId) {
+            case 'home':
+                await loadHomePage();
+                break;
+            case 'cases':
+                await loadCasesPage();
+                break;
+            case 'inventory':
+                await loadInventoryPage();
+                break;
+            case 'market':
+                await loadMarketPage();
+                break;
+        }
+    } catch (error) {
+        console.error(`Ошибка при загрузке страницы ${pageId}:`, error);
+        utils.showNotification('Не удалось загрузить данные страницы', 'error');
+    } finally {
+        state.isLoading = false;
+    }
+}
+
+/**
+ * Обработчик открытия кейса
+ * @param {Event} e - Событие клика
+ */
+async function handleOpenCase(e) {
+    if (state.isLoading) return;
+    
+    try {
+        state.isLoading = true;
+        const caseId = e.currentTarget.dataset.caseId;
+        
+        // Здесь будет запрос к API для открытия кейса
+        // const prize = await apiService.openCase(caseId);
+        
+        // Временная заглушка
+        const prize = {
+            id: 'phone_1',
+            name: 'iPhone 13 Pro',
+            rarity: 'legendary',
+            image: '/images/phones/iphone13pro.png'
+        };
+        
+        // Показываем анимацию выигрыша
+        showPrizeAnimation(prize);
+        
+        // Обновляем инвентарь
+        state.user.inventory.push(prize);
+        updateUI();
+        
+    } catch (error) {
+        console.error('Ошибка при открытии кейса:', error);
+        utils.showNotification('Не удалось открыть кейс', 'error');
+    } finally {
+        state.isLoading = false;
+    }
+}
+
+/**
+ * Обработчик переключения вкладок маркета
+ * @param {string} tabId - Идентификатор вкладки
+ */
+function handleMarketTabChange(tabId) {
+    // Обновляем активную вкладку
+    document.querySelectorAll('.market-tabs .tab-btn').forEach(btn => {
+        if (btn.dataset.tab === tabId) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Показываем соответствующий контент
+    document.querySelectorAll('.market-tab-content').forEach(content => {
+        if (content.id === `market-${tabId}`) {
+            content.style.display = 'block';
+        } else {
+            content.style.display = 'none';
+        }
+    });
+    
+    // Загружаем данные для вкладки
+    switch (tabId) {
+        case 'buy':
+            showMarketItems();
+            break;
+        case 'sell':
+            showSellInterface();
+            break;
+        case 'my-sales':
+            showMySales();
+            break;
+    }
+}
+
+/**
+ * Обработчики событий
+ * @type {Object}
+ */
+const eventHandlers = {
+    /**
+     * Обработчик навигации
+     * @param {Event} e - Событие клика
+     */
+    handleNavigation: (e) => {
+        e.preventDefault();
+        const targetSection = e.currentTarget?.dataset?.section;
+        if (targetSection) {
+            app.showPage(targetSection);
         }
     },
     
@@ -70,108 +649,34 @@ const eventHandlers = {
         
         const button = e.currentTarget;
         const caseId = parseInt(button.dataset.caseId);
-        const caseData = state.cases.find(c => c.id === caseId);
         
-        console.log('Попытка открыть кейс:', caseId, caseData);
+        // Здесь будет запрос к API для открытия кейса
+        // const prize = await apiService.openCase(caseId);
         
-        if (!caseData) {
-            console.error('Кейс не найден:', caseId);
-            utils.showNotification('Ошибка: кейс не найден', 'error');
-            return;
-        }
+        // Временная заглушка
+        const prize = {
+            id: 'phone_1',
+            name: 'iPhone 13 Pro',
+            rarity: 'legendary',
+            image: '/images/phones/iphone13pro.png'
+        };
         
-        // Проверяем баланс
-        if (state.user.signals < caseData.price) {
-            utils.showNotification(`Недостаточно Сигналов! Нужно ${caseData.price}`, 'error');
-            return;
-        }
+        // Показываем анимацию выигрыша
+        showPrizeAnimation(prize);
         
-        // Показываем анимацию загрузки
-        const originalText = button.innerHTML;
-        button.disabled = true;
-        button.innerHTML = '<div class="spinner"></div>';
+        // Обновляем инвентарь
+        state.user.inventory.push(prize);
+        updateUI();
         
-        try {
-            console.log('Начинаем открытие кейса...');
-            
-            // Имитация задержки открытия кейса
-            await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
-            
-            // Выбираем случайный приз с учетом вероятностей
-            const prize = utils.weightedRandom(caseData.items);
-            console.log('Выпал приз:', prize);
-            
-            if (!prize) {
-                throw new Error('Не удалось определить приз');
-            }
-            
-            // Создаем объект приза
-            const newPhone = {
-                id: Date.now(),
-                name: prize.name,
-                rarity: prize.rarity,
-                image: `https://via.placeholder.com/300?text=${encodeURIComponent(prize.name)}`,
-                receivedAt: new Date().toISOString()
-            };
-            
-            // Добавляем приз в инвентарь
-            state.user.inventory.push(newPhone);
-            
-            // Обновляем баланс
-            state.user.signals -= caseData.price;
-            
-            // Обновляем интерфейс
-            updateUI();
-            
-            // Показываем анимацию выигрыша
-            const modal = document.querySelector('.case-result-modal');
-            if (modal) {
-                const prizeImage = modal.querySelector('#result-phone-img');
-                const prizeName = modal.querySelector('#result-phone-name');
-                const prizeRarity = modal.querySelector('.prize-rarity');
-                
-                if (prizeImage) prizeImage.src = newPhone.image;
-                if (prizeImage) prizeImage.alt = newPhone.name;
-                if (prizeName) prizeName.textContent = newPhone.name;
-                if (prizeRarity) {
-                    prizeRarity.textContent = getRarityName(newPhone.rarity);
-                    prizeRarity.className = `prize-rarity rarity-${newPhone.rarity}`;
-                }
-                
-                // Показываем модальное окно
-                modal.classList.add('active');
-                
-                // Добавляем анимацию конфетти
-                const confettiContainer = modal.querySelector('.prize-animation');
-                if (confettiContainer) {
-                    createConfetti(confettiContainer);
-                }
-                
-                // Закрытие по клику вне контента
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        modal.classList.remove('active');
-                    }
-                });
-            }
-            
-            // Добавляем запись в историю
-            ui.addActivity(`Открыт кейс "${caseData.name}" и получен ${prize.name}`);
-            
-            console.log('Кейс успешно открыт, получен приз:', newPhone);
-            
-        } catch (error) {
-            console.error('Ошибка при открытии кейса:', error);
-            utils.showNotification('Произошла ошибка при открытии кейса', 'error');
-        } finally {
-            button.disabled = false;
-            button.innerHTML = originalText;
-        }
+        // Добавляем запись в историю
+        ui.addActivity(`Открыт кейс и получен ${prize.name}`);
+        
+        console.log('Кейс успешно открыт, получен приз:', prize);
     },
     
     // Показ уведомления при наведении на элемент
     handleTooltip: (e) => {
-        const tooltip = e.currentTarget.dataset.tooltip;
+        const tooltip = e.target.dataset.tooltip;
         if (tooltip) {
             // Показываем всплывающую подсказку
             console.log('Показать подсказку:', tooltip);
@@ -179,26 +684,9 @@ const eventHandlers = {
     }
 };
 
-// Утилиты для работы с интерфейсом
-const utils = {
-    showNotification: function(message, type = 'info') {
-        // Создаем уведомление
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        
-        // Добавляем в DOM
-        document.body.appendChild(notification);
-        
-        // Автоматически скрываем через 3 секунды
-        setTimeout(() => {
-            notification.classList.add('fade-out');
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    }
-};
-
-// Функции для работы с интерфейсом
+/**
+ * Функции для работы с интерфейсом
+ */
 const ui = {
     // Фильтрация инвентаря
     filterInventory: (filterType) => {
@@ -227,38 +715,47 @@ const ui = {
     },
     
     // Инициализация интерфейса
-    init: async () => {
+    init: async function() {
+        console.log('Инициализация UI...');
+        
+        // Проверяем существование элементов
+        if (!elements || !elements.navItems) {
+            console.error('Элементы интерфейса не найдены');
+            return;
+        }
+        
         try {
-            // Показываем состояние загрузки
-            const loadingElement = document.createElement('div');
-            loadingElement.className = 'loading-overlay';
-            loadingElement.innerHTML = `
-                <div class="loading-spinner"></div>
-                <div class="loading-text">Загрузка приложения...</div>
-            `;
-            document.body.appendChild(loadingElement);
-            
             // Инициализируем навигацию
-            elements.navItems.forEach(item => {
-                item.addEventListener('click', eventHandlers.handleNavigation);
-            });
+            if (elements.navItems && elements.navItems.length > 0) {
+                elements.navItems.forEach(item => {
+                    if (item) {
+                        item.addEventListener('click', eventHandlers.handleNavigation);
+                    }
+                });
+                console.log('Навигация инициализирована');
+            }
             
             // Инициализируем быстрые действия на главной
             const quickActions = document.querySelectorAll('.action-card');
-            quickActions.forEach(action => {
-                action.addEventListener('click', (e) => {
-                    const section = e.currentTarget.dataset.section;
-                    const navItem = document.querySelector(`.nav-item[data-section="${section}"]`);
-                    if (navItem) navItem.click();
+            if (quickActions && quickActions.length > 0) {
+                quickActions.forEach(action => {
+                    action.addEventListener('click', (e) => {
+                        const section = e.currentTarget.dataset.section;
+                        const navItem = document.querySelector(`.nav-item[data-section="${section}"]`);
+                        if (navItem) navItem.click();
+                    });
                 });
-            });
+                console.log('Быстрые действия инициализированы');
+            }
             
             // Инициализируем кнопки модального окна
             const closeModal = document.querySelector('.close-modal');
             if (closeModal) {
                 closeModal.addEventListener('click', () => {
-                    document.querySelector('.modal')?.classList.remove('active');
+                    const modal = document.querySelector('.modal');
+                    if (modal) modal.classList.remove('active');
                 });
+                console.log('Модальные окна инициализированы');
             }
             
             // Инициализируем кнопки профиля
@@ -267,7 +764,6 @@ const ui = {
                 'help-btn': () => utils.showNotification('Обратитесь в поддержку для помощи', 'info'),
                 'logout-btn': () => {
                     if (confirm('Вы уверены, что хотите выйти?')) {
-                        // В реальном приложении здесь был бы выход из аккаунта
                         utils.showNotification('Выход выполнен', 'success');
                     }
                 }
@@ -280,28 +776,12 @@ const ui = {
                 }
             });
             
-            // Загружаем начальные данные
-            await Promise.all([
-                loadUserData(),
-                loadHomePage(),
-                loadCases(),
-                loadInventory()
-            ]);
-            
-            // Обновляем UI после загрузки всех данных
-            updateUI();
-            
-            // Прячем индикатор загрузки
-            loadingElement.classList.add('fade-out');
-            setTimeout(() => {
-                loadingElement.remove();
-                document.body.classList.add('loaded');
-            }, 300);
+            console.log('UI инициализирован успешно');
+            return true;
             
         } catch (error) {
-            console.error('Ошибка инициализации:', error);
-            utils.showNotification('Ошибка при загрузке приложения', 'error');
-            document.body.classList.add('loaded');
+            console.error('Ошибка при инициализации UI:', error);
+            throw error;
         }
     },
     
@@ -617,38 +1097,72 @@ const ui = {
     // Показ анимации выигрыша
     showPrizeAnimation: (prize) => {
         const modal = document.querySelector('.case-result-modal');
-        if (!modal) return;
+        if (!modal) {
+            console.error('Модальное окно не найдено');
+            return;
+        }
         
-        // Обновляем данные в модальном окне
-        const prizeImage = modal.querySelector('#result-phone-img');
-        const prizeName = modal.querySelector('#result-phone-name');
-        const prizeRarity = modal.querySelector('.prize-rarity');
-        
-        prizeImage.src = `https://via.placeholder.com/300?text=${encodeURIComponent(prize.name)}`;
-        prizeImage.alt = prize.name;
-        prizeName.textContent = prize.name;
-        prizeRarity.textContent = getRarityName(prize.rarity);
-        prizeRarity.className = `prize-rarity rarity-${prize.rarity}`;
-        
-        // Показываем модальное окно
-        modal.classList.add('active');
-        
-        // Создаем конфетти
-        createConfetti(modal.querySelector('.prize-animation'));
-        
-        // Закрытие по клику вне контента
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('active');
+        try {
+            // Обновляем данные в модальном окне
+            const prizeImage = modal.querySelector('#result-phone-img');
+            const prizeName = modal.querySelector('#result-phone-name');
+            const prizeRarity = modal.querySelector('.prize-rarity');
+            const prizeAnimation = modal.querySelector('.prize-animation');
+            
+            if (!prizeImage || !prizeName || !prizeRarity || !prizeAnimation) {
+                throw new Error('Не все элементы модального окна найдены');
             }
-        });
-        
-        // Кнопка закрытия
-        const closeButton = modal.querySelector('.close-modal, #close-result');
-        if (closeButton) {
-            closeButton.addEventListener('click', () => {
+            
+            // Устанавливаем данные о призе
+            prizeImage.src = `https://via.placeholder.com/300?text=${encodeURIComponent(prize.name)}`;
+            prizeImage.alt = prize.name;
+            prizeName.textContent = prize.name;
+            prizeRarity.textContent = getRarityName(prize.rarity);
+            prizeRarity.className = `prize-rarity rarity-${prize.rarity}`;
+            
+            // Функция для закрытия модального окна
+            const closeModal = () => {
                 modal.classList.remove('active');
-            });
+                // Удаляем обработчик после закрытия
+                modal.removeEventListener('click', handleOutsideClick);
+                
+                // Удаляем обработчик кнопки закрытия
+                if (closeButton) {
+                    closeButton.removeEventListener('click', closeModal);
+                }
+            };
+            
+            // Обработчик клика вне контента
+            const handleOutsideClick = (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            };
+            
+            // Добавляем обработчик закрытия
+            modal.addEventListener('click', handleOutsideClick);
+            
+            // Добавляем кнопку закрытия, если её нет
+            let closeButton = modal.querySelector('.close-modal, #close-result');
+            if (!closeButton) {
+                closeButton = document.createElement('button');
+                closeButton.className = 'close-modal';
+                closeButton.innerHTML = '&times;';
+                modal.appendChild(closeButton);
+            }
+            
+            // Назначаем обработчик кнопки закрытия
+            closeButton.addEventListener('click', closeModal);
+            
+            // Показываем модальное окно
+            modal.classList.add('active');
+            
+            // Создаем конфетти
+            utils.createConfetti(prizeAnimation);
+            
+        } catch (error) {
+            console.error('Ошибка при показе анимации выигрыша:', error);
+            utils.showNotification('Не удалось отобразить выигрыш', 'error');
         }
     },
     
@@ -757,7 +1271,9 @@ async function loadUserData() {
                     id: tgUser.id,
                     firstName: tgUser.first_name || 'Игрок',
                     username: tgUser.username || 'player',
-                    photoUrl: tgUser.photo_url
+                    photoUrl: tgUser.photo_url,
+                    signals: state.user.signals,
+                    inventory: state.user.inventory
                 };
             }
         }
@@ -768,7 +1284,8 @@ async function loadUserData() {
                 id: Date.now(),
                 firstName: 'Тестовый',
                 username: 'test_user',
-                balance: 1000
+                signals: 1000,
+                inventory: []
             };
         }
         
@@ -813,7 +1330,7 @@ function updateUI() {
         
         // Обновляем отображение баланса в шапке
         if (elements.balanceElement) {
-            elements.balanceElement.textContent = utils.formatNumber(state.user.signals);
+            elements.balanceElement.textContent = utils.formatNumber(Number(state.user.signals));
         }
         
     } catch (error) {
@@ -821,304 +1338,9 @@ function updateUI() {
     }
 }
 
-// Функция для делегирования событий с улучшенной обработкой
-function setupEventDelegation() {
-    // Обработка кликов по кнопкам
-    document.addEventListener('click', (e) => {
-        // Обработка всех кликов по кнопкам с анимацией
-        const button = e.target.closest('button, .btn, .action-card, .nav-item');
-        if (button && !button.hasAttribute('disabled')) {
-            // Воспроизводим звук клика
-            soundManager.play('buttonClick');
-            
-            // Добавляем визуальную обратную связь
-            button.classList.add('active');
-            setTimeout(() => {
-                button.classList.remove('active');
-            }, 200);
-            
-            // Вибрация (если доступно)
-            soundManager.hapticFeedback('light');
-        }
-        
-        // Обработка навигации
-        const navLink = e.target.closest('[data-section]');
-        if (navLink) {
-            e.preventDefault();
-            const section = navLink.dataset.section;
-            navigateTo(section);
-        }
-        
-        // Обработка вкладок
-        const tabBtn = e.target.closest('.tab-btn');
-        if (tabBtn) {
-            e.preventDefault();
-            const tabId = tabBtn.dataset.tab;
-            switchTab(tabId);
-        }
-    });
-    
-    // Обработка наведения на интерактивные элементы
-    document.addEventListener('mouseover', (e) => {
-        const interactive = e.target.closest('.hover-effect, .btn, .card, .action-card');
-        if (interactive) {
-            interactive.classList.add('hover-active');
-        }
-    });
-    
-    document.addEventListener('mouseout', (e) => {
-        const interactive = e.target.closest('.hover-effect, .btn, .card, .action-card');
-        if (interactive) {
-            interactive.classList.remove('hover-active');
-        }
-    });
-    
-    // Инициализация при загрузке страницы
-    document.addEventListener('DOMContentLoaded', () => {
-        // Инициализация интерфейса
-        try {
-            ui.init();
-            
-            // Загружаем данные пользователя
-            loadUserData().then(() => {
-                // Показываем главную страницу
-                ui.loadHomePage();
-                updateUI();
-                
-                // Показываем контент
-                document.body.classList.add('loaded');
-            }).catch(error => {
-                console.error('Ошибка загрузки данных:', error);
-                utils.showNotification('Ошибка загрузки данных', 'error');
-                document.body.classList.add('loaded');
-            });
-        } catch (error) {
-            console.error('Ошибка инициализации:', error);
-            utils.showNotification('Ошибка инициализации', 'error');
-            document.body.classList.add('loaded');
-        }
-    });
-    
-    // Обработка нажатия на карточки
-    document.addEventListener('mousedown', (e) => {
-        const pressable = e.target.closest('.pressable, .card, .btn');
-        if (pressable) {
-            pressable.classList.add('pressed');
-        }
-    });
-    
-    document.addEventListener('mouseup', () => {
-        const pressed = document.querySelectorAll('.pressed');
-        pressed.forEach(el => el.classList.remove('pressed'));
-    });
-    
-    // Обработка касаний на мобильных устройствах
-    document.addEventListener('touchstart', (e) => {
-        const touchTarget = e.target.closest('.touch-feedback');
-        if (touchTarget) {
-            touchTarget.classList.add('touch-active');
-            soundManager.hapticFeedback('light');
-        }
-    }, { passive: true });
-    
-    document.addEventListener('touchend', () => {
-        const activeTouch = document.querySelectorAll('.touch-active');
-        activeTouch.forEach(el => el.classList.remove('touch-active'));
-    }, { passive: true });
-    
-    // Инициализация перетаскивания для карточек
-    initDragAndDrop();
+// Экспортируем функцию инициализации
+if (typeof window !== 'undefined') {
+    window.initApp = initApp;
 }
-// Обработка переключения вкладок рынка
-document.addEventListener('click', (e) => {
-    const tabBtn = e.target.closest('.market-tabs .tab-btn');
-    if (tabBtn) {
-        e.preventDefault();
-            const tabId = tabBtn.dataset.tab;
-            
-            // Обновляем активную вкладку
-            document.querySelectorAll('.market-tabs .tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn === tabBtn);
-            });
-            
-            // Показываем соответствующий контент
-            document.querySelectorAll('.market-section .tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            const targetTab = document.getElementById(`${tabId}-tab`);
-            if (targetTab) {
-                targetTab.classList.add('active');
-            }
-            
-            // Загружаем данные для выбранной вкладки
-            if (tabId === 'buy') {
-                ui.showMarketItems();
-            } else if (tabId === 'sell') {
-                ui.showSellInterface();
-            } else if (tabId === 'my-sales') {
-                ui.showMySales();
-            }
-        }
-        
-        // Обработка кнопки покупки на рынке
-        const buyBtn = e.target.closest('.btn-buy');
-        if (buyBtn) {
-            const itemId = parseInt(buyBtn.dataset.id);
-            const itemElement = buyBtn.closest('.market-item');
-            const itemName = itemElement?.querySelector('h4')?.textContent || 'этот товар';
-            
-            if (confirm(`Вы уверены, что хотите купить ${itemName}?`)) {
-                // Здесь будет вызов API для покупки
-                utils.showNotification(`Поздравляем с покупкой ${itemName}!`, 'success');
-                // Обновляем интерфейс
-                itemElement.remove();
-                // Обновляем баланс (в реальном приложении это будет после ответа сервера)
-                state.user.signals -= 100; // Примерная сумма
-                updateUI();
-            }
-        }
-        
-        // Обработка кнопки продажи
-        const sellBtn = e.target.closest('.btn-sell');
-        if (sellBtn) {
-            const phoneId = parseInt(sellBtn.dataset.id);
-            const phoneItem = sellBtn.closest('.phone-item');
-            const priceInput = phoneItem?.querySelector('.price-input');
-            const price = priceInput ? parseInt(priceInput.value) : 0;
-            
-            if (!price || price < 1) {
-                utils.showNotification('Укажите корректную цену', 'error');
-                return;
-            }
-            
-            const phoneName = phoneItem?.querySelector('h4')?.textContent || 'этот телефон';
-            
-            if (confirm(`Выставить на продажу ${phoneName} за ${price} сигналов?`)) {
-                // Здесь будет вызов API для размещения на продажу
-                utils.showNotification(`Телефон ${phoneName} выставлен на продажу за ${price} сигналов`, 'success');
-                // В реальном приложении нужно удалить телефон из инвентаря после ответа сервера
-                // и добавить его в раздел "Мои продажи"
-                phoneItem.remove();
-            }
-        }
-        
-        // Обработка кнопки повтора загрузки рынка
-        const retryBtn = e.target.closest('#retry-market');
-        if (retryBtn) {
-            ui.loadMarket();
-        }
-    });
-    
-    // Обработка кликов по кнопкам открытия кейсов
-document.addEventListener('click', (e) => {
-    const openCaseBtn = e.target.closest('.open-case-btn');
-    if (openCaseBtn) {
-        eventHandlers.handleOpenCase(e);
-        return;
-        }
 
-        // Обработка кликов по кнопкам навигации в нижнем меню
-        const navItem = e.target.closest('.nav-item');
-        if (navItem) {
-            e.preventDefault();
-            const section = navItem.dataset.section;
-            if (section) {
-                // Обновляем активный пункт меню
-                document.querySelectorAll('.nav-item').forEach(item => {
-                    item.classList.toggle('active', item === navItem);
-                });
-
-                // Показываем выбранную страницу
-                Object.entries(elements.pages).forEach(([id, element]) => {
-                    if (element) {
-                        element.classList.toggle('active', id === section);
-                    }
-                });
-
-                // Обновляем состояние
-                state.currentPage = section;
-
-                // Загружаем данные для страницы
-                if (section === 'inventory') {
-                    ui.loadInventory();
-                } else if (section === 'market') {
-                    ui.loadMarket();
-                } else if (section === 'cases') {
-                    ui.loadCases();
-                } else if (section === 'profile') {
-                    ui.loadProfile();
-                } else if (section === 'home') {
-                    ui.loadHomePage();
-                }
-            }
-        }
-
-        // Обработка кнопок фильтрации в инвентаре
-        const filterBtn = e.target.closest('.filter-btn');
-        if (filterBtn) {
-            e.preventDefault();
-            const filterType = filterBtn.textContent.trim().toLowerCase();
-            ui.filterInventory(filterType);
-            
-            // Обновляем активную кнопку фильтра
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.toggle('active', btn === filterBtn);
-            });
-        }
-
-        // Обработка кнопок быстрого доступа на главной
-        const actionCard = e.target.closest('.action-card');
-        if (actionCard) {
-            const section = actionCard.dataset.section;
-            if (section) {
-                // Находим соответствующий элемент навигации и эмулируем клик
-                const navItem = document.querySelector(`.nav-item[data-section="${section}"]`);
-                if (navItem) {
-                    navItem.click();
-                }
-            }
-        }
-    });
-
-    // Обработка кнопок профиля
-    document.addEventListener('click', (e) => {
-        const settingsBtn = e.target.closest('#settings-btn');
-        const helpBtn = e.target.closest('#help-btn');
-        const logoutBtn = e.target.closest('#logout-btn');
-        const closeModalBtn = e.target.closest('.close-modal');
-        const retryBtn = e.target.closest('#retry-loading');
-
-        if (settingsBtn) {
-            utils.showNotification('Настройки скоро будут доступны', 'info');
-            soundManager.play('notification');
-        } else if (helpBtn) {
-            utils.showNotification('Обратитесь в поддержку для помощи', 'info');
-            soundManager.play('notification');
-        } else if (logoutBtn) {
-            if (confirm('Вы уверены, что хотите выйти?')) {
-                utils.showNotification('Выход выполнен', 'success');
-                soundManager.play('success');
-                // Здесь можно добавить логику выхода
-                if (window.Telegram?.WebApp) {
-                    window.Telegram.WebApp.close();
-                }
-            }
-        } else if (closeModalBtn) {
-            const modal = closeModalBtn.closest('.modal');
-            if (modal) {
-                modal.classList.remove('active');
-            soundManager.play('buttonClick');
-        }
-    } else if (retryBtn) {
-        soundManager.play('buttonClick');
-        ui.loadInventory().catch(error => {
-            console.error('Ошибка при загрузке инвентаря:', error);
-            utils.showNotification('Не удалось загрузить инвентарь', 'error');
-        });
-    }
-});
-
-// Экспортируем объекты для отладки
-window.appState = state;
-window.ui = ui;
+export default initApp;
