@@ -100,7 +100,9 @@
             } catch (error) {
                 console.error('Ошибка инициализации приложения:', error);
                 alert('Произошла ошибка при загрузке приложения. Пожалуйста, обновите страницу.');
+                document.body.style.opacity = '1';
             } finally {
+                document.body.style.opacity = '1';
                 // Hide loading screen
                 const loadingScreen = document.querySelector('.app-loading');
                 if (loadingScreen) {
