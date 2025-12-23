@@ -363,8 +363,13 @@ async function initApp() {
     console.log('Инициализация приложения...');
     
     try {
+        if (document.readyState === 'loading') {
+            await new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true }));
+        }
+
         // Инициализация Telegram WebApp
         if (window.Telegram?.WebApp) {
+            tg = window.Telegram.WebApp;
             tg.expand();
             
             // Загружаем данные пользователя из Telegram
@@ -398,7 +403,7 @@ async function initApp() {
         await ui.init();
         
         // Обновляем UI
-        ui.updateUI();
+        updateUI();
         
         console.log('Приложение успешно инициализировано');
         return true;
@@ -433,7 +438,7 @@ function initElements() {
     
     // Профиль
     elements.profileAvatar = document.querySelector('.profile-avatar');
-    elements.balanceElement = document.querySelector('.balance-value');
+    elements.balanceElement = document.querySelector('.balance-value') || document.getElementById('signals-count');
     
     // Модальные окна
     elements.modal = document.querySelector('.modal');
@@ -574,7 +579,7 @@ async function handleOpenCase(e) {
         };
         
         // Показываем анимацию выигрыша
-        showPrizeAnimation(prize);
+        ui.showPrizeAnimation(prize);
         
         // Обновляем инвентарь
         state.user.inventory.push(prize);
@@ -614,13 +619,13 @@ function handleMarketTabChange(tabId) {
     // Загружаем данные для вкладки
     switch (tabId) {
         case 'buy':
-            showMarketItems();
+            ui.showMarketItems();
             break;
         case 'sell':
-            showSellInterface();
+            ui.showSellInterface();
             break;
         case 'my-sales':
-            showMySales();
+            ui.showMySales();
             break;
     }
 }
@@ -662,7 +667,7 @@ const eventHandlers = {
         };
         
         // Показываем анимацию выигрыша
-        showPrizeAnimation(prize);
+        ui.showPrizeAnimation(prize);
         
         // Обновляем инвентарь
         state.user.inventory.push(prize);
@@ -787,7 +792,8 @@ const ui = {
     
     // Обновление баланса
     updateBalance: () => {
-        elements.balanceElement.textContent = utils.formatNumber(state.user.signals);
+        if (!elements.balanceElement) return;
+        elements.balanceElement.textContent = utils.formatNumber(Number(state.user?.signals ?? 0));
     },
     
     // Загрузка главной страницы
