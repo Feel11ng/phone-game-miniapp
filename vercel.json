@@ -1,17 +1,19 @@
 {
-    "version": 2,
-    "builds": [
-        {
-            "src": "static/**",
-            "use": "@vercel/static"
-        },
-        {
-            "src": "static/index.html",
-            "use": "@vercel/static"
-        }
-    ],
-    "routes": [
-        { "src": "/static/(.*)", "dest": "/static/$1" },
-        { "src": "/(.*)", "dest": "/static/index.html" }
-    ]
+  "version": 2,
+  "builds": [
+    {
+      "src": "static/**/*.@(js|css|html|jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot|json|txt)",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "static/index.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/static/index.html"
+    }
+  ]
 }
