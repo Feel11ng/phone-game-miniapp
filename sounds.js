@@ -92,3 +92,6 @@ const soundManager = new SoundManager();
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { SoundManager, soundManager };
 }
+
+export { SoundManager, soundManager };
+export default soundManager;
