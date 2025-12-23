@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Phone Game Telegram Bot with Mini App",
   "scripts": {
-    "start": "serve static -s -l $PORT"
+    "start": "serve public -s -l $PORT"
   },
   "dependencies": {
     "serve": "^14.2.0"
