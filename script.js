@@ -4,6 +4,55 @@
 import { apiService } from './api.js';
 import AnimationManager from './animations.js';
 
+// Глобальные переменные
+let tg;
+
+// Инициализация Telegram WebApp
+function initTelegramWebApp() {
+    if (window.Telegram && window.Telegram.WebApp) {
+        tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.enableClosingConfirmation();
+        return true;
+    }
+    return false;
+}
+
+function handleTopupBalance() {
+    utils.showNotification('Пополнение баланса пока не доступно', 'info');
+}
+
+function renderInventory(inventory = []) {
+    const container = document.getElementById('inventory-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+    if (!inventory.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>Инвентарь пуст</p>
+                <p>Откройте кейсы, чтобы получить телефоны</p>
+            </div>
+        `;
+        return;
+    }
+
+    inventory.forEach(item => {
+        const card = utils.createElement('div', { class: 'phone-card rarity-' + (item.rarity || 'common') }, [
+            utils.createElement('div', { class: 'phone-icon' }, [
+                utils.createElement('img', { src: item.image || '/static/images/placeholder-phone.png', alt: item.name })
+            ]),
+            utils.createElement('div', { class: 'phone-info' }, [
+                utils.createElement('h4', { text: item.name }),
+                utils.createElement('p', { text: getRarityName(item.rarity || 'common') })
+            ])
+        ]);
+        container.appendChild(card);
+    });
+}
+
+// Using utils.showNotification instead of duplicate function
+
 /**
  * Основное состояние приложения
  * @type {Object}
@@ -38,8 +87,8 @@ const settings = {
     API_TIMEOUT: 10000 // ms
 };
 
-// Инициализация Telegram Web App
-let tg = window.Telegram?.WebApp;
+// Telegram WebApp is already initialized in initTelegramWebApp()
+// Remove duplicate declaration
 
 /**
  * Утилиты приложения
@@ -194,83 +243,40 @@ function safeCall(fn, errorMessage = 'Произошла ошибка') {
  * Основной объект приложения
  */
 const app = {
-    // Функция для создания эффекта конфетти
-    createConfetti: function(container) {
-        if (!container) return;
-        
-        // Очищаем предыдущие конфетти
-        container.innerHTML = '';
-        
-        // Создаем 50 конфетти
-        for (let i = 0; i < 50; i++) {
-            const confetti = document.createElement('div');
-            confetti.className = 'confetti';
-            
-            // Случайные цвета
-            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            
-            // Случайные размеры и позиции
-            const size = Math.random() * 10 + 5;
-            const posX = Math.random() * 100;
-            const animationDuration = Math.random() * 3 + 2;
-            
-            // Применяем стили
-            Object.assign(confetti.style, {
-                position: 'absolute',
-                width: `${size}px`,
-                height: `${size}px`,
-                backgroundColor: randomColor,
-                left: `${posX}%`,
-                top: '-20px',
-                borderRadius: '50%',
-                animation: `fall ${animationDuration}s linear forwards`,
-                zIndex: 1000
-            });
-            
-            // Добавляем анимацию падения
-            const keyframes = `
-                @keyframes fall {
-                    to {
-                        transform: translateY(calc(100vh + 20px));
-                        opacity: 0;
-                    }
-                }
-            `;
-            
-            // Добавляем стили анимации
-            const style = document.createElement('style');
-            style.type = 'text/css';
-            style.appendChild(document.createTextNode(keyframes));
-            document.head.appendChild(style);
-            
-            container.appendChild(confetti);
-            
-            // Удаляем конфетти после анимации
-            setTimeout(() => {
-                confetti.remove();
-            }, animationDuration * 1000);
-        }
-    },
-
     // Инициализация интерфейса
     init: async function() {
         console.log('Инициализация интерфейса...');
         
-        // Инициализируем элементы
-        initElements();
-        
-        // Настройка навигации
-        if (elements.navItems) {
-            elements.navItems.forEach(item => {
-                item.addEventListener('click', eventHandlers.handleNavigation);
-            });
-            console.log('Навигация инициализирована');
+        try {
+            // Инициализация Telegram WebApp
+            const isTelegram = initTelegramWebApp();
+            
+            // Инициализация элементов интерфейса
+            initElements();
+            
+            // Настройка обработчиков событий
+            setupEventListeners();
+            
+            // Загрузка данных пользователя
+            await loadUserData();
+            
+            // Обновление интерфейса
+            updateUI();
+            
+            // Показ главной страницы
+            showPage('home');
+            
+            // Прячем прелоадер
+            const preloader = document.querySelector('.app-loading');
+            if (preloader) {
+                preloader.style.opacity = '0';
+                setTimeout(() => preloader.style.display = 'none', 300);
+            }
+            
+        } catch (error) {
+            console.error('Ошибка инициализации приложения:', error);
+            utils.showNotification('Ошибка загрузки приложения', 'error');
         }
-        
-        // Показываем начальную страницу
-        this.showPage('home');
-        
         return true;
     },
     
@@ -364,9 +370,70 @@ async function initApp() {
     
     try {
         if (document.readyState === 'loading') {
-            await new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true }));
+            // Initialize the app when the page loads
+            document.addEventListener('DOMContentLoaded', () => {
+                // Initialize the app
+                app.init();
+                
+                // Add ripple effect to all buttons
+                document.addEventListener('click', function(e) {
+                    // Handle ripple effect
+                    const button = e.target.closest('.btn, .nav-item, .card, .balance-card');
+                    if (button) {
+                        e.preventDefault();
+                        
+                        // Create ripple element
+                        const ripple = document.createElement('span');
+                        ripple.className = 'ripple';
+                        
+                        // Get position of click
+                        const rect = button.getBoundingClientRect();
+                        const size = Math.max(rect.width, rect.height);
+                        const x = e.clientX - rect.left - size / 2;
+                        const y = e.clientY - rect.top - size / 2;
+                        
+                        // Position and size the ripple
+                        ripple.style.width = ripple.style.height = `${size}px`;
+                        ripple.style.left = `${x}px`;
+                        ripple.style.top = `${y}px`;
+                        
+                        // Add ripple to button
+                        button.style.position = 'relative';
+                        button.style.overflow = 'hidden';
+                        button.appendChild(ripple);
+                        
+                        // Remove ripple after animation
+                        setTimeout(() => {
+                            ripple.remove();
+                        }, 600);
+                    }
+                    
+                    // Handle navigation
+                    const navItem = e.target.closest('.nav-item');
+                    if (navItem) {
+                        const section = navItem.getAttribute('data-section');
+                        if (section) {
+                            e.preventDefault();
+                            app.showPage(section);
+                            
+                            // Update active state
+                            document.querySelectorAll('.nav-item').forEach(item => {
+                                item.classList.remove('active');
+                            });
+                            navItem.classList.add('active');
+                        }
+                    }
+                    
+                    // Handle top-up button
+                    const topupBtn = e.target.closest('.balance-topup-btn');
+                    if (topupBtn) {
+                        e.preventDefault();
+                        handleTopupBalance();
+                    }
+                });
+            });
         }
-
+        
         // Инициализация Telegram WebApp
         if (window.Telegram?.WebApp) {
             tg = window.Telegram.WebApp;
@@ -455,17 +522,23 @@ function initElements() {
  * Настраивает обработчики событий
  */
 function setupEventListeners() {
-    // Обработка навигации
-    document.addEventListener('click', (e) => {
-        // Навигация по страницам
-        const navItem = e.target.closest('.nav-item');
-        if (navItem) {
-            e.preventDefault();
-            const pageId = navItem.dataset.section;
-            if (pageId) {
-                app.showPage(pageId);
+    // Обработчики навигации
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function handleNavigation(e) {
+            if (e) e.preventDefault();
+            const target = e?.currentTarget || e?.target?.closest('[data-section]');
+            const section = target?.getAttribute('data-section');
+            if (section) {
+                app.showPage(section);
             }
-            return;
+        });
+    });
+    
+    // Обработчики кнопок
+    document.addEventListener('click', (e) => {
+        // Обработка открытия кейса
+        const caseItem = e.target.closest('.case-item');
+        if (caseItem) {
         }
         
         // Обработка кнопок открытия кейсов
@@ -501,29 +574,55 @@ function setupEventListeners() {
  * @param {string} pageId - Идентификатор страницы
  */
 function showPage(pageId) {
-    // Скрываем все страницы
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
+    const pages = document.querySelectorAll('.page');
+    const currentPage = document.querySelector('.page.active');
+    const nextPage = document.getElementById(`${pageId}-section`);
+
+    if (!nextPage) return;
+
+    nextPage.style.opacity = '0';
+    nextPage.style.transform = 'translateY(10px)';
+    nextPage.style.display = 'block';
+
+    requestAnimationFrame(() => {
+        if (currentPage) {
+            currentPage.style.opacity = '0';
+            currentPage.style.transform = 'translateY(-10px)';
+        }
+
+        setTimeout(() => {
+            pages.forEach(page => {
+                page.classList.remove('active');
+                page.style.display = 'none';
+                page.style.opacity = '';
+                page.style.transform = '';
+            });
+
+            nextPage.classList.add('active');
+            nextPage.style.display = 'block';
+
+            requestAnimationFrame(() => {
+                nextPage.style.opacity = '1';
+                nextPage.style.transform = 'translateY(0)';
+                nextPage.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+                setTimeout(() => {
+                    nextPage.style.transition = '';
+                }, 300);
+            });
+
+            window.history.pushState({ page: pageId }, '', `#${pageId}`);
+            app.loadPageData(pageId);
+        }, 150);
     });
-    
-    // Показываем выбранную страницу
-    const page = document.querySelector(`#${pageId}-section`);
-    if (page) {
-        page.classList.add('active');
-        state.currentPage = pageId;
-        
-        // Обновляем активную кнопку навигации
-        document.querySelectorAll('.nav-item').forEach(item => {
-            if (item.dataset.section === pageId) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
-        });
-        
-        // Загружаем данные страницы
-        loadPageData(pageId);
-    }
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+        if (item.dataset.section === pageId) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
 }
 
 /**
@@ -536,16 +635,16 @@ async function loadPageData(pageId) {
         
         switch (pageId) {
             case 'home':
-                await loadHomePage();
+                await app.loadHomePage();
                 break;
             case 'cases':
-                await loadCasesPage();
+                await app.loadCasesPage();
                 break;
             case 'inventory':
-                await loadInventoryPage();
+                await app.loadInventoryPage();
                 break;
             case 'market':
-                await loadMarketPage();
+                await app.loadMarketPage();
                 break;
         }
     } catch (error) {
