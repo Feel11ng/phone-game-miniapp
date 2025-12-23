@@ -2,6 +2,12 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Phone Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
     <title>Phone Tycoon</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#6c5ce7">
@@ -134,6 +140,52 @@
     </script>
 </head>
 <body>
+    <div class="app">
+        <div class="container">
+            <!-- Карточка баланса -->
+            <div class="balance-card">
+                <i class="fas fa-coins"></i>
+                <div style="flex: 1;">
+                    <div>Ваш баланс</div>
+                    <div class="balance-amount" id="balance-amount">0 ₽</div>
+                </div>
+                <button class="btn">
+                    <i class="fas fa-plus"></i> Пополнить
+                </button>
+            </div>
+
+            <!-- Основной контент -->
+            <div class="main-content">
+                <div class="card">
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <h3>Здесь пока ничего нет</h3>
+                        <p>Начните с пополнения баланса</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Нижняя навигация -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>Главная</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Магазин</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-gamepad"></i>
+                <span>Игры</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-user"></i>
+                <span>Профиль</span>
+            </a>
+        </nav>
+    </div>
     <!-- Loading Screen -->
     <div class="app-loading">
         <div class="loader"></div>
@@ -369,5 +421,26 @@
         <div id="notification" class="notification"></div>
     </div>
 
+    <script>
+        // Показываем интерфейс после загрузки страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Показываем контент с плавным появлением
+            document.body.style.opacity = '1';
+            document.body.classList.add('loaded');
+            
+            // Инициализация WebApp Telegram
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                
+                // Устанавливаем цвет кнопки в зависимости от темы
+                if (tg.colorScheme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                }
+            }
+        });
+    </script>
 </body>
 </html>
