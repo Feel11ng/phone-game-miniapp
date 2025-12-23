@@ -1,0 +1,17 @@
+{
+  "name": "phone-game-bot",
+  "version": "1.0.0",
+  "description": "Phone Game Telegram Bot with Mini App",
+  "main": "index.js",
+  "scripts": {
+    "start": "serve -s static -l $PORT",
+    "build": "echo 'No build step required for static files'",
+    "vercel-build": "echo 'Vercel build completed'"
+  },
+  "dependencies": {
+    "serve": "^14.2.0"
+  },
+  "engines": {
+    "node": ">=14.x"
+  }
+}
