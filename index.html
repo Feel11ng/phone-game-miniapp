@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <title>Phone Tycoon</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#6c5ce7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Styles -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="style.css">
-    <title>Phone Game</title>
+    
     <!-- Preload critical resources -->
     <link rel="preload" href="sounds.js" as="script">
     <link rel="preload" href="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3" as="audio" type="audio/mp3">
     <link rel="preload" href="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" as="audio" type="audio/mp3">
     <link rel="preload" href="https://assets.mixkit.co/sfx/preview/mixkit-warning-alarm-buzzer-991.mp3" as="audio" type="audio/mp3">
-    <meta name="theme-color" content="#6C5CE7">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <style>
         /* Critical CSS for initial load */
         body { 
@@ -75,26 +75,33 @@
     <link rel="preload" href="errorHandler.js" as="script">
     <link rel="preload" href="animations.js" as="script">
     
-    <!-- Load scripts with proper attributes -->
-    <script src="sounds.js" type="module"></script>
-    <script src="api.js" type="module"></script>
-    <script src="errorHandler.js" type="module"></script>
-    <script src="animations.js" type="module"></script>
-    
-    <!-- Main script with defer to ensure all modules are loaded -->
-    <script src="script.js" type="module" defer></script>
-    <script>
-        // Show loading state while resources are loading
-        document.addEventListener('DOMContentLoaded', () => {
-            // Preload critical sounds
-            const soundManager = new SoundManager();
-            
-            // When everything is loaded
-            window.addEventListener('load', () => {
+    <!-- Load all scripts as modules with proper dependencies -->
+    <script type="module">
+        // Initialize the app when everything is ready
+        async function initApp() {
+            try {
+                // Wait for all modules to load
+                const { default: ErrorHandler } = await import('./errorHandler.js');
+                const { default: AnimationManager } = await import('./animations.js');
+                const { SoundManager } = await import('./sounds.js');
+                
+                // Initialize core modules
+                ErrorHandler.init();
+                AnimationManager.init();
+                window.soundManager = new SoundManager();
+                
+                // Import and initialize the main app
+                const { default: initMainApp } = await import('./script.js');
+                await initMainApp();
+                
                 // Fade in the app
                 document.body.style.opacity = '1';
                 
-                // Hide loading screen with a delay
+            } catch (error) {
+                console.error('Ошибка инициализации приложения:', error);
+                alert('Произошла ошибка при загрузке приложения. Пожалуйста, обновите страницу.');
+            } finally {
+                // Hide loading screen
                 const loadingScreen = document.querySelector('.app-loading');
                 if (loadingScreen) {
                     loadingScreen.style.opacity = '0';
@@ -102,14 +109,15 @@
                         loadingScreen.style.display = 'none';
                     }, 300);
                 }
-                
-                // Play welcome sound
-                soundManager.play('notification');
-                
-                // Haptic feedback for app ready
-                soundManager.hapticFeedback('light');
-            });
-        });
+            }
+        }
+        
+        // Start the app when the page is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
     </script>
 </head>
 <body>
@@ -345,6 +353,5 @@
         <div id="notification" class="notification"></div>
     </div>
 
-    <script src="script.js"></script>
 </body>
 </html>
