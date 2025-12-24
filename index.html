@@ -9,134 +9,101 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <!-- Theme / PWA basics -->
+    <!-- Theme / PWA -->
     <meta name="theme-color" content="#6c5ce7">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <!-- Preconnect to external resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-
-    <!-- Preload critical CSS -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-
     <!-- App styles -->
     <link rel="stylesheet" href="./style.css">
 
-    <!-- Fallback for non-JS -->
-    <noscript>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    </noscript>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-    <!-- Critical inline styles for initial load -->
+    <!-- App initialization -->
+    <script type="module">
+        import ErrorHandler from './errorHandler.js';
+        import AnimationManager from './animations.js';
+        import { soundManager } from './sounds.js';
+        import initApp from './script.js';
+
+        async function bootstrap() {
+            try {
+                // Initialize core modules
+                ErrorHandler.init();
+                AnimationManager.init();
+
+                // Initialize main app
+                await initApp();
+
+                // Show content
+                document.body.style.opacity = '1';
+                document.body.classList.add('loaded');
+
+            } catch (error) {
+                console.error('Bootstrap error:', error);
+                document.body.style.opacity = '1';
+            } finally {
+                // Hide loading screen
+                const loader = document.querySelector('.app-loading');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.style.display = 'none', 300);
+                }
+            }
+        }
+
+        // Start when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bootstrap);
+        } else {
+            bootstrap();
+        }
+    </script>
+
+    <!-- Critical inline styles -->
     <style>
         body {
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         }
         .app-loading {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            inset: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: var(--bg-color);
+            background: var(--bg, #1e1e2e);
             z-index: 9999;
-            transition: opacity 0.3s ease-in-out;
         }
         .loader {
             width: 48px;
             height: 48px;
             border: 3px solid rgba(108, 92, 231, 0.1);
             border-radius: 50%;
-            display: inline-block;
-            position: relative;
-            box-sizing: border-box;
-            animation: rotation 1s linear infinite;
+            border-top-color: #6c5ce7;
+            animation: spin 1s linear infinite;
         }
-        .loader::after {
-            content: '';
-            box-sizing: border-box;
-            position: absolute;
-            left: 50%; top: 50%;
-            transform: translate(-50%, -50%);
-            width: 40px; height: 40px;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            border-bottom-color: var(--primary);
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .loading-text {
+            margin-top: 16px;
+            color: #b8c2cc;
+            font-family: 'Inter', sans-serif;
         }
     </style>
-
-    <!-- Telegram WebApp SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-    <!-- Preload local scripts -->
-    <link rel="preload" href="./sounds.js" as="script">
-    <link rel="preload" href="./api.js" as="script">
-    <link rel="preload" href="./errorHandler.js" as="script">
-    <link rel="preload" href="./animations.js" as="script">
-
-    <!-- App bootstrap -->
-    <script type="module">
-        async function initApp() {
-            try {
-                const { default: ErrorHandler } = await import('./errorHandler.js');
-                const { default: AnimationManager } = await import('./animations.js');
-                const { SoundManager } = await import('./sounds.js');
-
-                // Initialize core modules
-                ErrorHandler.init();
-                AnimationManager.init();
-                window.soundManager = new SoundManager();
-
-                // Import and initialize the main app
-                const { default: initMainApp } = await import('./script.js');
-                await initMainApp();
-
-                document.body.style.opacity = '1';
-            } catch (error) {
-                console.error('Ошибка инициализации приложения:', error);
-                alert('Произошла ошибка при загрузке приложения. Пожалуйста, обновите страницу.');
-                document.body.style.opacity = '1';
-            } finally {
-                // Hide loading screen
-                const loadingScreen = document.querySelector('.app-loading');
-                if (loadingScreen) {
-                    loadingScreen.style.opacity = '0';
-                    setTimeout(() => { loadingScreen.style.display = 'none'; }, 300);
-                }
-            }
-        }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initApp);
-        } else {
-            initApp();
-        }
-    </script>
 </head>
 <body>
     <!-- Loading Screen -->
     <div class="app-loading">
         <div class="loader"></div>
-        <p class="loading-text">Загрузка приложения...</p>
-        <div class="loading-progress">
-            <div class="progress-bar"></div>
-        </div>
+        <p class="loading-text">Загрузка...</p>
     </div>
 
     <div class="app">
-        <!-- Верхняя панель с балансом -->
+        <!-- Header -->
         <header class="app-header">
             <div class="balance-card">
                 <i class="fas fa-bolt"></i>
@@ -147,9 +114,9 @@
             </div>
         </header>
 
-        <!-- Основное содержимое -->
-        <main class="main-content" id="main-content">
-            <!-- Главная страница -->
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Home Page -->
             <section id="home-section" class="page active">
                 <div class="welcome-banner">
                     <h1>Добро пожаловать в Phone Tycoon!</h1>
@@ -173,68 +140,25 @@
 
                 <div class="recent-activity">
                     <h2>Последние действия</h2>
-                    <div class="activity-list" id="activity-feed">
-                        <div class="activity-item">Добро пожаловать в игру!</div>
-                    </div>
+                    <div class="activity-list" id="activity-feed"></div>
                 </div>
             </section>
 
-            <!-- Раздел инвентаря -->
+            <!-- Cases Page -->
+            <section id="cases-section" class="page">
+                <h2>Кейсы</h2>
+                <div class="cases-grid"></div>
+            </section>
+
+            <!-- Inventory Page -->
             <section id="inventory-section" class="page">
                 <div class="section-header">
                     <h2>Ваша коллекция</h2>
-                    <div class="filters">
-                        <button class="filter-btn active">Все</button>
-                        <button class="filter-btn">Обычные</button>
-                        <button class="filter-btn">Редкие</button>
-                        <button class="filter-btn">Эпические</button>
-                        <button class="filter-btn">Легендарные</button>
-                    </div>
                 </div>
-                <div id="inventory-list" class="phone-grid">
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <p>Загрузка коллекции...</p>
-                    </div>
-                </div>
+                <div id="inventory-list" class="phone-grid"></div>
             </section>
 
-            <!-- Раздел кейсов -->
-            <section id="cases-section" class="page">
-                <h2>Кейсы</h2>
-                <div class="cases-grid">
-                    <div class="case-card" data-case-id="1">
-                        <div class="case-image">
-                            <img src="https://via.placeholder.com/120" alt="Базовый кейс">
-                        </div>
-                        <div class="case-info">
-                            <h3>Базовый кейс</h3>
-                            <div class="case-price">
-                                <i class="fas fa-bolt"></i> 50
-                            </div>
-                            <button class="btn open-case-btn" data-case-id="1">Открыть</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="case-result" class="case-result-modal">
-                    <div class="modal-content">
-                        <span class="close-modal">&times;</span>
-                        <h3>Поздравляем!</h3>
-                        <div class="prize-animation">
-                            <div class="phone-reveal">
-                                <img id="result-phone-img" src="" alt="Новый телефон">
-                            </div>
-                            <div class="confetti"></div>
-                        </div>
-                        <p id="result-phone-name" class="prize-name"></p>
-                        <p class="prize-rarity"></p>
-                        <button class="btn" id="close-result">Отлично!</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Раздел рынка -->
+            <!-- Market Page -->
             <section id="market-section" class="page">
                 <div class="market-tabs">
                     <button class="tab-btn active" data-tab="buy">Купить</button>
@@ -242,61 +166,26 @@
                     <button class="tab-btn" data-tab="my-sales">Мои продажи</button>
                 </div>
                 
-                <!-- Вкладка покупки -->
                 <div class="tab-content active" id="buy-tab">
-                    <div class="market-filters">
-                        <select class="filter-select" id="market-filter">
-                            <option value="all">Все телефоны</option>
-                            <option value="common">Обычные</option>
-                            <option value="uncommon">Необычные</option>
-                            <option value="rare">Редкие</option>
-                            <option value="legendary">Легендарные</option>
-                        </select>
-                        <div class="search-box">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="market-search" placeholder="Поиск по названию...">
-                        </div>
-                    </div>
-                    <div id="market-items" class="market-items">
-                        <div class="loading-spinner">
-                            <div class="spinner"></div>
-                            <p>Загрузка товаров...</p>
-                        </div>
-                    </div>
+                    <div id="market-items" class="market-items"></div>
                 </div>
                 
-                <!-- Вкладка продажи -->
                 <div class="tab-content" id="sell-tab">
                     <div class="sell-interface">
                         <h3>Выберите телефон для продажи</h3>
-                        <div class="inventory-list" id="sell-phone-list">
-                            <div class="loading-spinner">
-                                <div class="spinner"></div>
-                                <p>Загрузка инвентаря...</p>
-                            </div>
-                        </div>
-                        <div class="sell-tip">
-                            <i class="fas fa-info-circle"></i>
-                            <p>Вы получите 90% от указанной цены (10% - комиссия площадки)</p>
-                        </div>
+                        <div id="sell-phone-list" class="inventory-list"></div>
                     </div>
                 </div>
                 
-                <!-- Вкладка мои продажи -->
                 <div class="tab-content" id="my-sales-tab">
                     <div class="my-sales">
-                        <h3>Мои прода��и</h3>
-                        <div class="sales-list" id="sales-list">
-                            <div class="loading-spinner">
-                                <div class="spinner"></div>
-                                <p>Загрузка ваших продаж...</p>
-                            </div>
-                        </div>
+                        <h3>Мои продажи</h3>
+                        <div id="sales-list" class="sales-list"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- Профиль пользователя -->
+            <!-- Profile Page -->
             <section id="profile-section" class="page">
                 <div class="profile-header">
                     <div class="profile-avatar" id="profile-avatar">
@@ -326,14 +215,11 @@
                     <button class="btn btn-outline" id="help-btn">
                         <i class="fas fa-question-circle"></i> Помощь
                     </button>
-                    <button class="btn btn-outline" id="logout-btn">
-                        <i class="fas fa-sign-out-alt"></i> Выйти
-                    </button>
                 </div>
             </section>
         </main>
 
-        <!-- Нижняя навигация -->
+        <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <a href="#" class="nav-item active" data-section="home">
                 <i class="fas fa-home"></i>
@@ -356,27 +242,22 @@
                 <span>Профиль</span>
             </a>
         </nav>
-
-        <!-- Уведомления -->
-        <div id="notification" class="notification"></div>
     </div>
 
-    <script>
-        // Показываем интерфейс после загрузки страницы (Telegram WebApp + плавное появление)
-        document.addEventListener('DOMContentLoaded', function() {
-            document.body.style.opacity = '1';
-            document.body.classList.add('loaded');
-            
-            if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                tg.expand();
-                if (tg.colorScheme === 'dark') {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                } else {
-                    document.documentElement.setAttribute('data-theme', 'light');
-                }
-            }
-        });
-    </script>
+    <!-- Case Result Modal -->
+    <div class="case-result-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>🎉 Поздравляем!</h3>
+            <div class="prize-animation">
+                <div class="phone-reveal">
+                    <img id="result-phone-img" src="" alt="Prize">
+                </div>
+            </div>
+            <p id="result-phone-name" class="prize-name"></p>
+            <p class="prize-rarity"></p>
+            <button class="btn" id="close-result">Отлично!</button>
+        </div>
+    </div>
 </body>
 </html>
