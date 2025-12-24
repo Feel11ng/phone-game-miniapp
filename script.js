@@ -310,7 +310,7 @@ const app = {
     // Загрузка главной страницы
     loadHomePage: function() {
         console.log('Загрузка главной страницы...');
-        // Здесь будет загрузка данных для главной страницы
+        ui.loadHomePage();
         this.updateUI();
     },
     
@@ -319,15 +319,29 @@ const app = {
         console.log('Загрузка страницы кейсов...');
         // Инициализируем кейсы
         const casesContainer = document.querySelector('.cases-grid');
-        if (casesContainer && casesContainer.children.length === 0) {
-            // Добавляем тестовый кейс, если контейнер пуст
-            const testCase = {
-                id: 1,
-                name: 'Базовый кейс',
-                price: 50,
-                image: 'https://via.placeholder.com/120?text=Case'
-            };
-            state.cases = [testCase];
+        if (casesContainer) {
+            // Добавляем тестовые кейсы
+            const testCases = [
+                {
+                    id: 1,
+                    name: 'Базовый кейс',
+                    price: 50,
+                    image: 'https://via.placeholder.com/120?text=Case1'
+                },
+                {
+                    id: 2,
+                    name: 'Премиум кейс',
+                    price: 150,
+                    image: 'https://via.placeholder.com/120?text=Case2'
+                },
+                {
+                    id: 3,
+                    name: 'Легендарный кейс',
+                    price: 500,
+                    image: 'https://via.placeholder.com/120?text=Case3'
+                }
+            ];
+            state.cases = testCases;
             ui.loadCases();
         }
         this.updateUI();
@@ -336,6 +350,7 @@ const app = {
     // Загрузка инвентаря
     loadInventoryPage: function() {
         console.log('Загрузка инвентаря...');
+        console.log('Текущий инвентарь:', state.user.inventory);
         ui.renderInventoryPage();
         this.updateUI();
     },
