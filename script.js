@@ -317,7 +317,19 @@ const app = {
     // Загрузка страницы кейсов
     loadCasesPage: function() {
         console.log('Загрузка страницы кейсов...');
-        // Здесь будет загрузка данных для страницы кейсов
+        // Инициализируем кейсы
+        const casesContainer = document.querySelector('.cases-grid');
+        if (casesContainer && casesContainer.children.length === 0) {
+            // Добавляем тестовый кейс, если контейнер пуст
+            const testCase = {
+                id: 1,
+                name: 'Базовый кейс',
+                price: 50,
+                image: 'https://via.placeholder.com/120?text=Case'
+            };
+            state.cases = [testCase];
+            ui.loadCases();
+        }
         this.updateUI();
     },
     
@@ -369,81 +381,14 @@ async function initApp() {
     console.log('Инициализация приложения...');
     
     try {
-        if (document.readyState === 'loading') {
-            // Initialize the app when the page loads
-            document.addEventListener('DOMContentLoaded', () => {
-                // Initialize the app
-                app.init();
-                
-                // Add ripple effect to all buttons
-                document.addEventListener('click', function(e) {
-                    // Handle ripple effect
-                    const button = e.target.closest('.btn, .nav-item, .card, .balance-card');
-                    if (button) {
-                        e.preventDefault();
-                        
-                        // Create ripple element
-                        const ripple = document.createElement('span');
-                        ripple.className = 'ripple';
-                        
-                        // Get position of click
-                        const rect = button.getBoundingClientRect();
-                        const size = Math.max(rect.width, rect.height);
-                        const x = e.clientX - rect.left - size / 2;
-                        const y = e.clientY - rect.top - size / 2;
-                        
-                        // Position and size the ripple
-                        ripple.style.width = ripple.style.height = `${size}px`;
-                        ripple.style.left = `${x}px`;
-                        ripple.style.top = `${y}px`;
-                        
-                        // Add ripple to button
-                        button.style.position = 'relative';
-                        button.style.overflow = 'hidden';
-                        button.appendChild(ripple);
-                        
-                        // Remove ripple after animation
-                        setTimeout(() => {
-                            ripple.remove();
-                        }, 600);
-                    }
-                    
-                    // Handle navigation
-                    const navItem = e.target.closest('.nav-item');
-                    if (navItem) {
-                        const section = navItem.getAttribute('data-section');
-                        if (section) {
-                            e.preventDefault();
-                            app.showPage(section);
-                            
-                            // Update active state
-                            document.querySelectorAll('.nav-item').forEach(item => {
-                                item.classList.remove('active');
-                            });
-                            navItem.classList.add('active');
-                        }
-                    }
-                    
-                    // Handle top-up button
-                    const topupBtn = e.target.closest('.balance-topup-btn');
-                    if (topupBtn) {
-                        e.preventDefault();
-                        handleTopupBalance();
-                    }
-                });
-            });
-        }
-        
         // Инициализация Telegram WebApp
         if (window.Telegram?.WebApp) {
             tg = window.Telegram.WebApp;
             tg.expand();
             
             // Загружаем данные пользователя из Telegram
-            const initData = new URLSearchParams(tg.initData || '');
-            const userData = JSON.parse(initData.get('user') || '{}');
-            
-            if (userData) {
+            if (tg.initDataUnsafe?.user) {
+                const userData = tg.initDataUnsafe.user;
                 state.user = {
                     id: userData.id,
                     firstName: userData.first_name || 'Пользователь',
@@ -528,6 +473,17 @@ function setupEventListeners() {
             if (e) e.preventDefault();
             const target = e?.currentTarget || e?.target?.closest('[data-section]');
             const section = target?.getAttribute('data-section');
+            if (section) {
+                app.showPage(section);
+            }
+        });
+    });
+    
+    // Обработчики быстрых действий на главной
+    document.querySelectorAll('.action-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = card.getAttribute('data-section');
             if (section) {
                 app.showPage(section);
             }
@@ -693,7 +649,7 @@ async function handleOpenCase(e) {
 }
 
 /**
- * Обработчик переключения вкладок маркета
+ * Обработчик п��реключения вкладок маркета
  * @param {string} tabId - Идентификатор вкладки
  */
 function handleMarketTabChange(tabId) {
@@ -707,11 +663,11 @@ function handleMarketTabChange(tabId) {
     });
     
     // Показываем соответствующий контент
-    document.querySelectorAll('.market-tab-content').forEach(content => {
-        if (content.id === `market-${tabId}`) {
-            content.style.display = 'block';
+    document.querySelectorAll('.tab-content').forEach(content => {
+        if (content.id === `${tabId}-tab`) {
+            content.classList.add('active');
         } else {
-            content.style.display = 'none';
+            content.classList.remove('active');
         }
     });
     
