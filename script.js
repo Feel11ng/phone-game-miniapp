@@ -336,14 +336,21 @@ const app = {
     // Загрузка инвентаря
     loadInventoryPage: function() {
         console.log('Загрузка инвентаря...');
-        // Здесь будет загрузка данных инвентаря
+        ui.renderInventoryPage();
         this.updateUI();
     },
     
     // Загрузка маркетплейса
     loadMarketPage: function() {
         console.log('Загрузка маркетплейса...');
-        // Здесь будет загрузка данных маркетплейса
+        ui.loadMarket();
+        this.updateUI();
+    },
+    
+    // Загрузка профиля
+    loadProfilePage: function() {
+        console.log('Загрузка профиля...');
+        ui.updateProfilePage();
         this.updateUI();
     },
     
@@ -1242,6 +1249,64 @@ const ui = {
         // Ограничиваем количество записей
         while (activityList.children.length > 10) {
             activityList.removeChild(activityList.lastChild);
+        }
+    },
+    
+    // Отрисовка страницы инвентаря
+    renderInventoryPage: () => {
+        const container = document.getElementById('inventory-list');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        const inventory = state.user.inventory || [];
+        
+        if (inventory.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>Инвентарь пуст</p>
+                    <p>Откройте кейсы, чтобы получить телефоны</p>
+                </div>
+            `;
+            return;
+        }
+        
+        inventory.forEach(phone => {
+            const card = utils.createElement('div', { class: `phone-card rarity-${phone.rarity || 'common'}` }, [
+                utils.createElement('div', { class: 'phone-icon' }, [
+                    utils.createElement('img', { 
+                        src: phone.image || 'https://via.placeholder.com/84?text=Phone', 
+                        alt: phone.name 
+                    })
+                ]),
+                utils.createElement('div', { class: 'phone-info' }, [
+                    utils.createElement('h4', { text: phone.name }),
+                    utils.createElement('p', { text: getRarityName(phone.rarity || 'common') })
+                ])
+            ]);
+            container.appendChild(card);
+        });
+    },
+    
+    // Обновление профиля
+    updateProfilePage: () => {
+        const username = document.querySelector('#username');
+        const totalPhones = document.getElementById('total-phones');
+        const totalCases = document.getElementById('total-cases');
+        const totalSales = document.getElementById('total-sales');
+        const profileAvatar = document.querySelector('.profile-avatar');
+        
+        if (username) username.textContent = state.user.firstName;
+        if (totalPhones) totalPhones.textContent = state.user.inventory.length;
+        if (totalCases) totalCases.textContent = state.user.inventory.length;
+        if (totalSales) totalSales.textContent = '0';
+        
+        if (profileAvatar) {
+            if (state.user.photoUrl) {
+                profileAvatar.style.backgroundImage = `url(${state.user.photoUrl})`;
+                profileAvatar.innerHTML = '';
+            } else {
+                profileAvatar.textContent = state.user.firstName ? state.user.firstName[0].toUpperCase() : 'U';
+            }
         }
     }
 };
