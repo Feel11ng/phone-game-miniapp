@@ -1,178 +1,169 @@
-// Error handling and logging utility
-class ErrorHandler {
-    static init() {
-        // Global error handler for uncaught exceptions
-        window.onerror = (message, source, lineno, colno, error) => {
-            this.logError({
-                message,
-                source,
-                lineno,
-                colno,
-                error: error?.stack || error,
-                type: 'unhandled_error'
-            });
-            return true; // Prevent default browser error handling
-        };
+// Browser-safe error handling and logging utility for the Mini App
+// - No direct usage of process.env in browser runtime
+// - Safe console wrapping without recursion
+// - Graceful network logging with try/catch
 
-        // Global promise rejection handler
-        window.addEventListener('unhandledrejection', (event) => {
-            this.logError({
-                message: 'Unhandled Promise Rejection',
-                error: event.reason?.stack || event.reason || event,
-                type: 'unhandled_rejection'
-            });
+class ErrorHandler {
+  static init() {
+    if (window.__errorHandlerInitialized) return;
+    window.__errorHandlerInitialized = true;
+
+    // Global error handler
+    window.onerror = (message, source, lineno, colno, error) => {
+      this.logError({
+        message,
+        source,
+        lineno,
+        colno,
+        error: error?.stack || String(error),
+        type: 'unhandled_error'
+      });
+      return true; // prevent default browser popup
+    };
+
+    // Global unhandled rejection handler
+    window.addEventListener('unhandledrejection', (event) => {
+      this.logError({
+        message: 'Unhandled Promise Rejection',
+        error: event?.reason?.stack || String(event?.reason),
+        type: 'unhandled_rejection'
+      });
+    });
+
+    // Setup console hooks
+    this.setupErrorReporting();
+  }
+
+  static setupErrorReporting() {
+    // Keep original console refs (bound) to avoid recursion
+    if (!window.__originalConsoleRef) {
+      window.__originalConsoleRef = {
+        log: console.log.bind(console),
+        error: console.error.bind(console),
+        warn: console.warn.bind(console),
+        info: console.info.bind(console),
+        debug: console.debug.bind(console)
+      };
+    }
+    const original = window.__originalConsoleRef;
+
+    // Wrap console methods
+    console.log = (...args) => {
+      try { ErrorHandler.logToServer('log', args); } catch (_) {}
+      original.log(...args);
+    };
+    console.error = (...args) => {
+      try { ErrorHandler.logToServer('error', args); } catch (_) {}
+      original.error(...args);
+    };
+    console.warn = (...args) => {
+      try { ErrorHandler.logToServer('warn', args); } catch (_) {}
+      original.warn(...args);
+    };
+    console.info = (...args) => {
+      try { ErrorHandler.logToServer('info', args); } catch (_) {}
+      original.info(...args);
+    };
+    console.debug = (...args) => {
+      try { ErrorHandler.logToServer('debug', args); } catch (_) {}
+      original.debug(...args);
+    };
+  }
+
+  static logError(errorData) {
+    const error = {
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+      ...errorData
+    };
+
+    // Log to console (will be wrapped safely)
+    try { (window.__originalConsoleRef?.error || console.error)('Error occurred:', error); } catch (_) {}
+
+    // Send to error tracking endpoint (best-effort)
+    this.reportError(error);
+    return error;
+  }
+
+  static async reportError(error) {
+    try {
+      const resp = await fetch('/api/logs/error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(error)
+      });
+      if (!resp.ok) {
+        (window.__originalConsoleRef?.warn || console.warn)('Failed to send error report');
+      }
+    } catch (e) {
+      (window.__originalConsoleRef?.warn || console.warn)('Error reporting failed:', e);
+    }
+  }
+
+  static logToServer(level, args) {
+    const original = window.__originalConsoleRef || console;
+    const env = (typeof process !== 'undefined' && process?.env?.NODE_ENV) || 'production';
+
+    const logEntry = {
+      level,
+      timestamp: new Date().toISOString(),
+      messages: args.map(arg => {
+        if (arg instanceof Error) {
+          return { message: arg.message, stack: arg.stack, name: arg.name };
+        }
+        return arg;
+      }),
+      context: { url: window.location.href, userAgent: navigator.userAgent }
+    };
+
+    // Dev: print to original console, not recursively
+    if (env === 'development' && typeof original[level] === 'function') {
+      try { original[level](...args); } catch (_) {}
+    }
+
+    // Prod: send logs to server (best-effort)
+    if (env === 'production') {
+      this.sendLogToServer(logEntry);
+    }
+  }
+
+  static async sendLogToServer(logEntry) {
+    try {
+      await fetch('/api/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(logEntry)
+      });
+    } catch (e) {
+      (window.__originalConsoleRef?.warn || console.warn)('Failed to send log to server:', e);
+    }
+  }
+
+  static withErrorHandling(fn, errorMessage = 'Произошла ошибка') {
+    return async (...args) => {
+      try {
+        return await fn(...args);
+      } catch (error) {
+        this.logError({
+          message: errorMessage,
+          error: error?.stack || String(error),
+          type: 'function_error',
+          functionName: fn.name || 'anonymous'
         });
 
-        // Log page errors to the server
-        this.setupErrorReporting();
-    }
-
-    static setupErrorReporting() {
-        // Override console methods to capture logs
-        const originalConsole = {
-            log: console.log,
-            error: console.error,
-            warn: console.warn,
-            info: console.info,
-            debug: console.debug
-        };
-
-        // Enhanced console logging with error tracking
-        console.log = (...args) => {
-            this.logToServer('log', args);
-            originalConsole.log(...args);
-        };
-
-        console.error = (...args) => {
-            this.logToServer('error', args);
-            originalConsole.error(...args);
-        };
-
-        console.warn = (...args) => {
-            this.logToServer('warn', args);
-            originalConsole.warn(...args);
-        };
-
-        console.info = (...args) => {
-            this.logToServer('info', args);
-            originalConsole.info(...args);
-        };
-
-        console.debug = (...args) => {
-            this.logToServer('debug', args);
-            originalConsole.debug(...args);
-        };
-    }
-
-    static logError(errorData) {
-        const error = {
-            timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent,
-            url: window.location.href,
-            ...errorData
-        };
-
-        // Log to console
-        console.error('Error occurred:', error);
-
-        // Send to error tracking service (e.g., Sentry, LogRocket, or your own API)
-        this.reportError(error);
-
-        return error;
-    }
-
-    static async reportError(error) {
+        // user-friendly notification fallback
         try {
-            // Replace with your error reporting endpoint
-            const response = await fetch('/api/logs/error', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(error)
-            });
+          if (window.showNotification) window.showNotification(errorMessage, 'error');
+        } catch (_) {}
 
-            if (!response.ok) {
-                console.warn('Failed to send error report to server');
-            }
-        } catch (e) {
-            console.warn('Error reporting failed:', e);
-        }
-    }
-
-    static logToServer(level, args) {
-        const logEntry = {
-            level,
-            timestamp: new Date().toISOString(),
-            messages: args.map(arg => {
-                if (arg instanceof Error) {
-                    return {
-                        message: arg.message,
-                        stack: arg.stack,
-                        name: arg.name
-                    };
-                }
-                return arg;
-            }),
-            context: {
-                url: window.location.href,
-                userAgent: navigator.userAgent
-            }
-        };
-
-        // In development, log to console
-        if (process.env.NODE_ENV === 'development') {
-            console[level](...args);
-        }
-
-        // In production, send logs to server
-        if (process.env.NODE_ENV === 'production') {
-            this.sendLogToServer(logEntry);
-        }
-    }
-
-    static async sendLogToServer(logEntry) {
-        try {
-            await fetch('/api/logs', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(logEntry)
-            });
-        } catch (error) {
-            console.warn('Failed to send log to server:', error);
-        }
-    }
-
-    static withErrorHandling(fn, errorMessage = 'An error occurred') {
-        return async (...args) => {
-            try {
-                return await fn(...args);
-            } catch (error) {
-                this.logError({
-                    message: errorMessage,
-                    error: error?.stack || error,
-                    type: 'function_error',
-                    functionName: fn.name || 'anonymous'
-                });
-                
-                // Show user-friendly error message
-                if (window.showNotification) {
-                    window.showNotification(errorMessage, 'error');
-                } else {
-                    console.error(errorMessage, error);
-                }
-                
-                // Re-throw to allow further error handling
-                throw error;
-            }
-        };
-    }
+        throw error;
+      }
+    };
+  }
 }
 
-// Initialize error handling when the script loads
+// Initialize when loaded
 ErrorHandler.init();
 
-// Export for use in other modules
 export default ErrorHandler;
