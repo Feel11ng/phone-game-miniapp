@@ -283,3 +283,626 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
   .container { padding: 12px; padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
   .bottom-nav { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
 }
+/* Дополнительные улучшения UI - добавьте в конец style.css */
+
+/* =======================
+   Welcome Banner
+   ======================= */
+.welcome-banner {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: #fff;
+    text-align: center;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.welcome-banner h1 {
+    font-size: 1.5rem;
+    margin: 0 0 8px;
+    font-weight: 700;
+}
+
+.welcome-banner p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.9rem;
+}
+
+/* =======================
+   Balance Card Enhanced
+   ======================= */
+.balance-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(108,92,231,0.35);
+}
+
+.balance-card i {
+    color: var(--accent);
+    font-size: 1.2rem;
+}
+
+.balance-amount {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.balance-label {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+/* =======================
+   Section Headers
+   ======================= */
+.section-header {
+    margin-bottom: 16px;
+}
+
+.section-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.section-header h2 i {
+    color: var(--primary);
+}
+
+/* =======================
+   Empty States
+   ======================= */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-soft);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: var(--border);
+    margin-bottom: 16px;
+    display: block;
+}
+
+.empty-state p {
+    margin: 8px 0;
+}
+
+.empty-state .text-soft {
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+/* =======================
+   Loading States
+   ======================= */
+.loading-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.loading-spinner .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(108,92,231,0.15);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin .9s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+    color: var(--text-soft);
+    font-size: 0.9rem;
+}
+
+/* =======================
+   Activity List
+   ======================= */
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--surface);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+.activity-item i {
+    color: var(--primary);
+    font-size: 1rem;
+}
+
+/* =======================
+   Phone Cards Enhanced
+   ======================= */
+.phone-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.phone-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow);
+}
+
+.phone-card .phone-icon {
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    background: rgba(108,92,231,0.05);
+    border-radius: 8px;
+}
+
+.phone-card img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    border-radius: 6px;
+}
+
+.phone-card .phone-info h4 {
+    margin: 0 0 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.phone-card .phone-info p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-soft);
+}
+
+/* =======================
+   Case Cards Enhanced
+   ======================= */
+.case-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.case-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow);
+}
+
+.case-card .case-image {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    background: rgba(108,92,231,0.05);
+}
+
+.case-card .case-image img {
+    width: 100%;
+    max-width: 120px;
+    height: auto;
+}
+
+.case-card .case-info {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.case-card .case-info h3 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+}
+
+.case-card .case-price {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin: 12px 0;
+}
+
+.case-card .case-price i {
+    font-size: 1rem;
+}
+
+.case-card .btn {
+    width: 100%;
+    margin-top: 8px;
+}
+
+/* =======================
+   Market Tabs Enhanced
+   ======================= */
+.market-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0;
+    padding: 4px;
+    background: var(--surface);
+    border-radius: 10px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-soft);
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.tab-btn i {
+    font-size: 0.9rem;
+}
+
+.tab-btn:hover {
+    background: rgba(108,92,231,0.1);
+    color: var(--text);
+}
+
+.tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* =======================
+   Market Items Enhanced
+   ======================= */
+.market-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.market-item {
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: var(--transition);
+}
+
+.market-item:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow);
+}
+
+.market-item .item-image {
+    width: 70px;
+    height: 70px;
+    background: rgba(108,92,231,0.05);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.market-item .item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.market-item .item-details h4 {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.market-item .item-seller,
+.market-item .item-rarity {
+    font-size: 0.8rem;
+    color: var(--text-soft);
+    margin: 2px 0;
+}
+
+.market-item .item-actions {
+    text-align: right;
+}
+
+.market-item .item-price {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 1rem;
+    margin-bottom: 8px;
+    justify-content: flex-end;
+}
+
+.market-item .btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+}
+
+/* =======================
+   Profile Stats Enhanced
+   ======================= */
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 12px;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 10px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.2rem;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--primary);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-soft);
+}
+
+/* =======================
+   Profile Actions
+   ======================= */
+.profile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-actions .btn {
+    width: 100%;
+    justify-content: center;
+}
+
+/* =======================
+   Modal Enhanced
+   ======================= */
+.case-result-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+}
+
+.case-result-modal.active {
+    display: flex;
+}
+
+.case-result-modal .modal-content {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    width: min(95vw, 400px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    position: relative;
+    text-align: center;
+}
+
+.case-result-modal .close-modal {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 32px;
+    height: 32px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.case-result-modal .close-modal:hover {
+    background: rgba(255,255,255,0.2);
+    transform: rotate(90deg);
+}
+
+.case-result-modal h3 {
+    font-size: 1.5rem;
+    margin: 0 0 20px;
+}
+
+.case-result-modal .prize-animation {
+    position: relative;
+    height: 200px;
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.case-result-modal .phone-reveal img {
+    max-width: 200px;
+    max-height: 200px;
+    object-fit: contain;
+    animation: prizeReveal 0.5s ease-out;
+}
+
+@keyframes prizeReveal {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) rotate(-180deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.case-result-modal .prize-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 16px 0 8px;
+}
+
+.case-result-modal .prize-rarity {
+    font-size: 1rem;
+    margin-bottom: 20px;
+}
+
+/* =======================
+   Buttons Enhanced
+   ======================= */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: var(--transition);
+    box-shadow: 0 4px 12px rgba(108,92,231,0.25);
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108,92,231,0.35);
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    box-shadow: none;
+}
+
+.btn-outline:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+/* =======================
+   Responsive
+   ======================= */
+@media (max-width: 480px) {
+    .welcome-banner h1 {
+        font-size: 1.2rem;
+    }
+    
+    .profile-stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    
+    .stat-card {
+        padding: 12px 8px;
+    }
+    
+    .stat-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+    
+    .stat-value {
+        font-size: 1.2rem;
+    }
+}
