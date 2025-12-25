@@ -6,6 +6,7 @@
     "start": "serve public -s -l $PORT"
   },
   "dependencies": {
+    "@vercel/speed-insights": "^1.0.0",
     "serve": "^14.2.0"
   },
   "engines": {
