@@ -280,36 +280,51 @@ const UI = {
         const inventoryList = document.getElementById('inventory-list');
         if (!inventoryList) return;
         
-        inventoryList.innerHTML = '';
-        
-        if (state.user.inventory.length === 0) {
-            inventoryList.innerHTML = `
-                <div class="empty-state">
-                    <p>Инвентарь пуст</p>
-                    <p>Откройте кейсы, чтобы получить телефоны</p>
-                </div>
-            `;
-            return;
-        }
-        
-        state.user.inventory.forEach(phone => {
-            const phoneCard = utils.createElement('div', {
-                class: `phone-card rarity-${phone.rarity || 'common'}`
-            }, [
-                utils.createElement('div', { class: 'phone-icon' }, [
-                    utils.createElement('img', {
-                        src: phone.image || 'https://via.placeholder.com/84?text=Phone',
-                        alt: phone.name
-                    })
-                ]),
-                utils.createElement('div', { class: 'phone-info' }, [
-                    utils.createElement('h4', { text: phone.name }),
-                    utils.createElement('p', { text: utils.getRarityName(phone.rarity || 'common') })
-                ])
-            ]);
+        try {
+            // Показываем загрузку
+            inventoryList.innerHTML = '<div class="loading-state"><div class="loading-spinner"><div class="spinner"></div><p>Загрузка...</p></div></div>';
             
-            inventoryList.appendChild(phoneCard);
-        });
+            // Загружаем инвентарь
+            const response = await apiService.get('/inventory?userId=test_user');
+            if (response.ok && response.inventory) {
+                state.user.inventory = response.inventory;
+            }
+            
+            inventoryList.innerHTML = '';
+            
+            if (state.user.inventory.length === 0) {
+                inventoryList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-box-open"></i>
+                        <p>Инвентарь пуст</p>
+                        <p class="text-soft">Откройте кейсы, чтобы получить телефоны</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            state.user.inventory.forEach(phone => {
+                const phoneCard = utils.createElement('div', {
+                    class: `phone-card rarity-${phone.rarity || 'common'}`
+                }, [
+                    utils.createElement('div', { class: 'phone-icon' }, [
+                        utils.createElement('img', {
+                            src: phone.image || 'https://via.placeholder.com/84?text=Phone',
+                            alt: phone.name
+                        })
+                    ]),
+                    utils.createElement('div', { class: 'phone-info' }, [
+                        utils.createElement('h4', { text: phone.name }),
+                        utils.createElement('p', { text: utils.getRarityName(phone.rarity || 'common') })
+                    ])
+                ]);
+                
+                inventoryList.appendChild(phoneCard);
+            });
+        } catch (error) {
+            console.error('Ошибка загрузки инвентаря:', error);
+            inventoryList.innerHTML = '<div class="error-state"><p>Не удалось загрузить инвентарь</p></div>';
+        }
     },
     
     async loadMarketPage() {
