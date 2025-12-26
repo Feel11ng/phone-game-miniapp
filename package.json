@@ -1,15 +1,19 @@
 {
-  "name": "phone-game-bot",
-  "version": "1.0.0",
-  "description": "Phone Game Telegram Bot with Mini App",
-  "scripts": {
-    "start": "serve public -s -l $PORT",
-    "vercel-build": "echo 'Build step not needed'"
-  },
-  "dependencies": {
-    "serve": "^14.2.0"
-  },
-  "engines": {
-    "node": ">=14.x"
-  }
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ]
 }
