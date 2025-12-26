@@ -10,7 +10,6 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import database as db
-from config import DATABASE_PATH
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -63,8 +62,6 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'ok': False, 'error': 'Missing required fields'}).encode())
                 return
-
-            # TODO: Проверить, что inventory_item_id принадлежит user_id
             
             listing_id = await db.list_item_on_market(user_id, inventory_item_id, price)
             
