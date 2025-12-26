@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Phone Game Telegram Bot with Mini App",
   "scripts": {
-    "start": "serve public -s -l $PORT"
+    "start": "serve public -s -l $PORT",
+    "vercel-build": "echo 'Build step not needed'"
   },
   "dependencies": {
     "serve": "^14.2.0"
