@@ -176,6 +176,53 @@ async def get_listing_by_id(listing_id):
         row = await cursor.fetchone()
         return dict(row) if row else None
 
+async def buy_item_from_market(listing_id, buyer_id):
+   async with aiosqlite.connect(DATABASE_PATH) as db:
+       async with db.cursor() as cursor:
+           await cursor.execute("BEGIN")
+           try:
+               # Получаем информацию о лоте
+               await cursor.execute("SELECT * FROM market_listings WHERE id = ?", (listing_id,))
+               listing = await cursor.fetchone()
+               if not listing:
+                   raise Exception("Listing not found")
+               
+               listing = dict(zip([d[0] for d in cursor.description], listing))
+               seller_id = listing['seller_user_id']
+               price = listing['price_signals']
+               inventory_item_id = listing['inventory_item_id']
+
+               # Получаем информацию о покупателе
+               await cursor.execute("SELECT * FROM users WHERE id = ?", (buyer_id,))
+               buyer = await cursor.fetchone()
+               if not buyer:
+                   raise Exception("Buyer not found")
+
+               buyer = dict(zip([d[0] for d in cursor.description], buyer))
+               
+               if buyer['signals'] < price:
+                   raise Exception("Not enough signals")
+
+               # Обновляем баланс покупателя
+               new_balance = buyer['signals'] - price
+               await cursor.execute("UPDATE users SET signals = ? WHERE id = ?", (new_balance, buyer_id))
+
+               # Обновляем баланс продавца
+               await cursor.execute("UPDATE users SET signals = signals + ? WHERE id = ?", (price, seller_id))
+               
+               # Перемещаем предмет в инвентарь покупателя
+               await cursor.execute("UPDATE user_inventory SET user_id = ? WHERE id = ?", (buyer_id, inventory_item_id))
+
+               # Удаляем лот с рынка
+               await cursor.execute("DELETE FROM market_listings WHERE id = ?", (listing_id,))
+
+               await db.commit()
+               return new_balance
+           except Exception as e:
+               await db.rollback()
+               logger.error(f"Failed to buy item: {e}")
+               return None
+
 async def get_user_inventory(user_id):
     async with aiosqlite.connect(DATABASE_PATH) as db:
         db.row_factory = aiosqlite.Row
