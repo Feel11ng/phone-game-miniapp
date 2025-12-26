@@ -311,5 +311,22 @@
            </form>
        </div>
    </div>
+   
+   <!-- Модальное окно продажи -->
+  <div class="modal sell-item-modal">
+      <div class="modal-content">
+          <button class="close-modal">&times;</button>
+          <h3>Продать телефон</h3>
+          <p id="sell-item-name"></p>
+          <form id="sell-item-form">
+              <input type="hidden" id="sell-item-id">
+              <div class="form-group">
+                  <label for="sell-price">Цена (в сигналах)</label>
+                  <input type="number" id="sell-price" placeholder="Введите цену" required min="1">
+              </div>
+              <button type="submit" class="btn">Выставить на продажу</button>
+          </form>
+      </div>
+  </div>
 </body>
 </html>
