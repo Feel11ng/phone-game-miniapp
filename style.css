@@ -486,6 +486,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
     color: var(--text-soft);
 }
 
+.phone-actions {
+   display: flex;
+   justify-content: flex-end;
+   padding-top: 10px;
+}
+
 /* =======================
    Case Cards Enhanced
    ======================= */
@@ -729,6 +735,77 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 /* =======================
    Modal Enhanced
    ======================= */
+.modal {
+   position: fixed;
+   inset: 0;
+   background: rgba(0,0,0,0.7);
+   backdrop-filter: blur(8px);
+   display: none;
+   align-items: center;
+   justify-content: center;
+   z-index: 10000;
+   padding: 20px;
+}
+
+.modal.active {
+   display: flex;
+}
+
+.modal .modal-content {
+   background: var(--card-bg);
+   border: 1px solid var(--border);
+   border-radius: 20px;
+   padding: 24px;
+   width: min(95vw, 400px);
+   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+   position: relative;
+   text-align: center;
+}
+
+.modal .close-modal {
+   position: absolute;
+   right: 12px;
+   top: 12px;
+   width: 32px;
+   height: 32px;
+   background: rgba(255,255,255,0.1);
+   border: none;
+   border-radius: 50%;
+   color: #fff;
+   font-size: 1.2rem;
+   cursor: pointer;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   transition: var(--transition);
+}
+
+.modal .close-modal:hover {
+   background: rgba(255,255,255,0.2);
+   transform: rotate(90deg);
+}
+
+.modal h3 {
+   font-size: 1.5rem;
+   margin: 0 0 20px;
+}
+
+.modal .form-group {
+   margin-bottom: 16px;
+   text-align: left;
+}
+
+.modal .form-group label {
+   display: block;
+   margin-bottom: 8px;
+   font-size: 0.9rem;
+   color: var(--text-soft);
+}
+
+.sell-item-modal .modal-content {
+  max-width: 320px;
+}
+
 .case-result-modal {
     position: fixed;
     inset: 0;
