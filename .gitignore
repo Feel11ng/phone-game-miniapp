@@ -1,0 +1,15 @@
+# Окружение
+.env
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+
+# База данных
+*.db
+*.db-journal
+
+# Зависимости
+node_modules/
+/venv/
+/env/
