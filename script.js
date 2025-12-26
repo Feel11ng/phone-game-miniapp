@@ -49,6 +49,7 @@ const elements = {
     
     // Модальные окна
     caseResultModal: null,
+    sellItemModal: null,
     
     init() {
         this.navItems = document.querySelectorAll('.nav-item');
@@ -59,6 +60,7 @@ const elements = {
         this.signalsCount = document.getElementById('signals-count');
         this.pages = document.querySelectorAll('.page');
         this.caseResultModal = document.querySelector('.case-result-modal');
+        this.sellItemModal = document.querySelector('.sell-item-modal');
     }
 };
 
@@ -276,8 +278,8 @@ const UI = {
         }
     },
     
-    async loadInventoryPage() {
-        const inventoryList = document.getElementById('inventory-list');
+    async loadInventoryPage(containerId = 'inventory-list') {
+        const inventoryList = document.getElementById(containerId);
         if (!inventoryList) return;
         
         try {
@@ -285,7 +287,7 @@ const UI = {
             inventoryList.innerHTML = '<div class="loading-state"><div class="loading-spinner"><div class="spinner"></div><p>Загрузка...</p></div></div>';
             
             // Загружаем инвентарь
-            const response = await apiService.get('/inventory?userId=test_user');
+            const response = await apiService.get(`/inventory?userId=${state.user.id}`);
             if (response.ok && response.inventory) {
                 state.user.inventory = response.inventory;
             }
@@ -316,6 +318,13 @@ const UI = {
                     utils.createElement('div', { class: 'phone-info' }, [
                         utils.createElement('h4', { text: phone.name }),
                         utils.createElement('p', { text: utils.getRarityName(phone.rarity || 'common') })
+                    ]),
+                    utils.createElement('div', { class: 'phone-actions' }, [
+                        utils.createElement('button', {
+                            class: 'btn btn-sell',
+                            'data-inventory-id': phone.id,
+                            text: 'Продать'
+                        })
                     ])
                 ]);
                 
@@ -337,55 +346,67 @@ const UI = {
             const response = await apiService.get('/market');
             state.marketItems = response.items || [];
             
-            this.renderMarketItems();
+            this.renderMarketItems('buy');
         } catch (error) {
             console.error('Ошибка загрузки маркета:', error);
             marketItems.innerHTML = '<div class="error-state"><p>Не удалось загрузить маркет</p></div>';
         }
     },
     
-    renderMarketItems() {
-        const marketItems = document.getElementById('market-items');
-        if (!marketItems) return;
-        
-        marketItems.innerHTML = '';
-        
-        if (state.marketItems.length === 0) {
-            marketItems.innerHTML = '<div class="empty-state"><p>На рынке пока нет товаров</p></div>';
-            return;
-        }
-        
-        state.marketItems.forEach(item => {
-            const itemCard = utils.createElement('div', {
-                class: `market-item rarity-${item.rarity}`
-            }, [
-                utils.createElement('div', { class: 'item-image' }, [
-                    utils.createElement('img', {
-                        src: `https://via.placeholder.com/80?text=${encodeURIComponent(item.name.split(' ')[0])}`,
-                        alt: item.name
-                    })
-                ]),
-                utils.createElement('div', { class: 'item-details' }, [
-                    utils.createElement('h4', { text: item.name }),
-                    utils.createElement('div', { class: 'item-seller', text: `Продавец: ${item.seller}` }),
-                    utils.createElement('div', { class: 'item-rarity', text: utils.getRarityName(item.rarity) })
-                ]),
-                utils.createElement('div', { class: 'item-actions' }, [
-                    utils.createElement('div', { class: 'item-price' }, [
-                        `${item.price} `,
-                        utils.createElement('i', { class: 'fas fa-bolt' })
-                    ]),
-                    utils.createElement('button', {
-                        class: 'btn btn-buy',
-                        'data-item-id': item.id,
-                        text: 'Купить'
-                    })
-                ])
-            ]);
-            
-            marketItems.appendChild(itemCard);
-        });
-    },
+    renderMarketItems(tab) {
+       const container = document.getElementById(`${tab}-items`);
+       if (!container) return;
+       
+       container.innerHTML = '';
+       
+       let itemsToRender = [];
+       if (tab === 'buy') {
+           itemsToRender = state.marketItems.filter(item => item.seller_id !== state.user.id);
+       } else if (tab === 'my-listings') {
+           itemsToRender = state.marketItems.filter(item => item.seller_id === state.user.id);
+       }
+
+       if (itemsToRender.length === 0) {
+           container.innerHTML = `<div class="empty-state"><p>Здесь пока пусто</p></div>`;
+           return;
+       }
+
+       itemsToRender.forEach(item => {
+           const itemCard = utils.createElement('div', {
+               class: `market-item rarity-${item.rarity}`
+           }, [
+               utils.createElement('div', { class: 'item-image' }, [
+                   utils.createElement('img', {
+                       src: item.image_filename ? `/images/phones/${item.image_filename}` : `https://via.placeholder.com/80?text=${encodeURIComponent(item.name.split(' ')[0])}`,
+                       alt: item.name
+                   })
+               ]),
+               utils.createElement('div', { class: 'item-details' }, [
+                   utils.createElement('h4', { text: item.name }),
+                   utils.createElement('div', { class: 'item-seller', text: `Продавец: ${item.seller_name || 'Неизвестно'}` }),
+                   utils.createElement('div', { class: 'item-rarity', text: utils.getRarityName(item.rarity) })
+               ]),
+               utils.createElement('div', { class: 'item-actions' }, [
+                   utils.createElement('div', { class: 'item-price' }, [
+                       `${item.price_signals} `,
+                       utils.createElement('i', { class: 'fas fa-bolt' })
+                   ]),
+                   tab === 'buy'
+                       ? utils.createElement('button', {
+                           class: 'btn btn-buy',
+                           'data-item-id': item.id,
+                           text: 'Купить'
+                       })
+                       : utils.createElement('button', {
+                           class: 'btn btn-unlist',
+                           'data-item-id': item.id,
+                           text: 'Снять'
+                       })
+               ])
+           ]);
+           container.appendChild(itemCard);
+       });
+   },
     
     async loadProfilePage() {
         const username = document.getElementById('username');
@@ -491,6 +512,22 @@ const EventHandlers = {
             EventHandlers.handleMarketTab(tabBtn);
             return;
         }
+        
+        // Продажа из инвентаря
+        const sellBtn = e.target.closest('.btn-sell');
+        if (sellBtn) {
+            e.preventDefault();
+            EventHandlers.handleSellItem(sellBtn);
+            return;
+        }
+        
+        // Снятие с продажи
+        const unlistBtn = e.target.closest('.btn-unlist');
+        if (unlistBtn) {
+            e.preventDefault();
+            EventHandlers.handleUnlistItem(unlistBtn);
+            return;
+        }
     },
     
     async handleOpenCase(button) {
@@ -550,31 +587,98 @@ const EventHandlers = {
             return;
         }
         
-        if (state.user.signals < item.price) {
+        if (state.user.signals < item.price_signals) {
             utils.showNotification('Недостаточно сигналов', 'error');
             return;
         }
         
-        // TODO: Реализовать покупку через API
-        utils.showNotification('Функция покупки скоро будет доступна', 'info');
+        try {
+            state.isLoading = true;
+            button.disabled = true;
+            button.textContent = 'Покупаем...';
+
+            const response = await apiService.post('/market/buy', { listingId: item.id, userId: state.user.id });
+
+            if (response.ok) {
+                utils.showNotification('Телефон успешно куплен!', 'success');
+                state.user.signals = response.newBalance;
+                UI.updateBalance();
+                UI.loadMarketPage();
+                UI.loadInventoryPage();
+            }
+        } catch (error) {
+            console.error('Ошибка покупки:', error);
+            utils.showNotification(error.message || 'Не удалось купить телефон', 'error');
+        } finally {
+            state.isLoading = false;
+            button.disabled = false;
+            button.textContent = 'Купить';
+        }
     },
-    
+
+   handleSellItem(button) {
+       const inventoryId = parseInt(button.dataset.inventoryId);
+       const item = state.user.inventory.find(i => i.id === inventoryId);
+       
+       if (!item) {
+           utils.showNotification('Предмет не найден в инвентаре', 'error');
+           return;
+       }
+
+       const modal = elements.sellItemModal;
+       modal.querySelector('#sell-item-name').textContent = item.name;
+       modal.querySelector('#sell-item-id').value = item.id;
+       modal.classList.add('active');
+
+       const form = modal.querySelector('#sell-item-form');
+       form.onsubmit = async (e) => {
+           e.preventDefault();
+           const price = parseInt(modal.querySelector('#sell-price').value);
+           if (isNaN(price) || price <= 0) {
+               utils.showNotification('Введите корректную цену', 'error');
+               return;
+           }
+
+           try {
+               const response = await apiService.post('/market/sell', {
+                   inventoryItemId: item.id,
+                   userId: state.user.id,
+                   price: price
+               });
+
+               if (response.ok) {
+                   utils.showNotification('Телефон выставлен на продажу!', 'success');
+                   modal.classList.remove('active');
+                   UI.loadInventoryPage(); // Обновляем инвентарь
+                   UI.loadMarketPage(); // Обновляем маркет
+               }
+           } catch (error) {
+               utils.showNotification(error.message || 'Не удалось выставить на продажу', 'error');
+           }
+       };
+   },
+   
+   async handleUnlistItem(button) {
+       const itemId = parseInt(button.dataset.itemId);
+       // Логика снятия с продажи
+   },
+
     handleMarketTab(button) {
         const tabId = button.dataset.tab;
         
-        // Обновляем активную вкладку
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.toggle('active', btn === button);
-        });
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
         
-        // Показываем контент
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.toggle('active', content.id === `${tabId}-tab`);
-        });
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`${tabId}-tab`).classList.add('active');
         
-        // Загружаем данные
         if (tabId === 'buy') {
-            UI.renderMarketItems();
+            UI.renderMarketItems('buy');
+        } else if (tabId === 'sell') {
+            // UI для продажи уже в инвентаре
+            UI.loadInventoryPage('sell-phone-list');
+        } else if (tabId === 'my-sales') {
+            UI.renderMarketItems('my-listings');
         }
     }
 };
