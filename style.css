@@ -492,6 +492,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
    padding-top: 10px;
 }
 
+.phone-actions {
+   display: flex;
+   justify-content: flex-end;
+   padding-top: 10px;
+}
+
 /* =======================
    Case Cards Enhanced
    ======================= */
@@ -804,6 +810,18 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 
 .sell-item-modal .modal-content {
   max-width: 320px;
+}
+
+.modal .form-group {
+   margin-bottom: 16px;
+   text-align: left;
+}
+
+.modal .form-group label {
+   display: block;
+   margin-bottom: 8px;
+   font-size: 0.9rem;
+   color: var(--text-soft);
 }
 
 .case-result-modal {
