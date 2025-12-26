@@ -3,8 +3,11 @@
 const dataStore = {
     users: new Map(),
     inventory: new Map(),
-    marketListings: new Map()
+    marketListings: new Map(), // Хранение объявлений: Map<listingId, listing>
+    userListings: new Map() // Связь пользователь -> его объявления: Map<userId, Set<listingId>>
 };
+
+let nextListingId = 1; // Счетчик для ID объявлений
 
 // Моковые данные кейсов
 const CASES = [
@@ -207,18 +210,33 @@ module.exports = async (req, res) => {
         
         // === GET /market ===
         if (req.method === 'GET' && segments[0] === 'market' && !segments[1]) {
-            // Генерируем случайные товары на рынке
-            const marketItems = [
-                { id: 101, name: 'iPhone 15 Pro Max', price: 500, seller: 'User123', rarity: 'legendary' },
-                { id: 102, name: 'Samsung Galaxy S23', price: 450, seller: 'Trader22', rarity: 'rare' },
-                { id: 103, name: 'Google Pixel 8 Pro', price: 400, seller: 'PhoneLover', rarity: 'rare' },
-                { id: 104, name: 'Xiaomi 13T Pro', price: 350, seller: 'TechGuru', rarity: 'uncommon' },
-                { id: 105, name: 'OnePlus 11', price: 300, seller: 'GadgetKing', rarity: 'uncommon' }
-            ];
+            const userId = url.searchParams.get('userId') || 'test_user';
+            
+            // Получаем все объявления, кроме своих
+            const allListings = Array.from(dataStore.marketListings.values())
+                .filter(listing => listing.sellerId !== userId)
+                .sort((a, b) => b.createdAt - a.createdAt); // Новые сверху
             
             return res.status(200).json({
                 ok: true,
-                items: marketItems
+                items: allListings
+            });
+        }
+        
+        // === GET /market/my-listings ===
+        if (req.method === 'GET' && segments[0] === 'market' && segments[1] === 'my-listings') {
+            const userId = url.searchParams.get('userId') || 'test_user';
+            
+            // Получаем объявления пользователя
+            const userListingIds = dataStore.userListings.get(userId) || new Set();
+            const myListings = Array.from(userListingIds)
+                .map(id => dataStore.marketListings.get(id))
+                .filter(Boolean)
+                .sort((a, b) => b.createdAt - a.createdAt);
+            
+            return res.status(200).json({
+                ok: true,
+                listings: myListings
             });
         }
         
@@ -226,13 +244,66 @@ module.exports = async (req, res) => {
         if (req.method === 'POST' && segments[0] === 'market' && segments[1] === 'buy') {
             const body = await parseBody();
             const userId = body.userId || 'test_user';
-            const itemId = Number(body.itemId);
+            const listingId = body.listingId;
             
-            // TODO: Реализовать логику покупки
+            // Находим объявление
+            const listing = dataStore.marketListings.get(listingId);
+            if (!listing) {
+                return res.status(404).json({
+                    ok: false,
+                    error: 'Объявление не найдено'
+                });
+            }
+            
+            // Проверяем, что покупатель не продавец
+            if (listing.sellerId === userId) {
+                return res.status(400).json({
+                    ok: false,
+                    error: 'Нельзя купить собственный товар'
+                });
+            }
+            
+            // Получаем покупателя
+            const buyer = getUserOrCreate(userId);
+            
+            // Проверяем баланс
+            if (buyer.signals < listing.price) {
+                return res.status(400).json({
+                    ok: false,
+                    error: 'Недостаточно сигналов'
+                });
+            }
+            
+            // Получаем продавца
+            const seller = getUserOrCreate(listing.sellerId);
+            
+            // Выполняем транзакцию
+            buyer.signals -= listing.price;
+            seller.signals += listing.price;
+            
+            // Обновляем пользователей
+            dataStore.users.set(userId, buyer);
+            dataStore.users.set(listing.sellerId, seller);
+            
+            // Переносим телефон в инвентарь покупателя
+            const buyerInventory = dataStore.inventory.get(userId) || [];
+            buyerInventory.push(listing.phone);
+            dataStore.inventory.set(userId, buyerInventory);
+            
+            // Удаляем объявление
+            dataStore.marketListings.delete(listingId);
+            
+            // Удаляем из списка объявлений продавца
+            const sellerListings = dataStore.userListings.get(listing.sellerId);
+            if (sellerListings) {
+                sellerListings.delete(listingId);
+            }
             
             return res.status(200).json({
                 ok: true,
-                message: 'Покупка выполнена успешно'
+                message: 'Покупка выполнена успешно',
+                newBalance: buyer.signals,
+                phone: listing.phone
             });
         }
         
@@ -243,11 +314,107 @@ module.exports = async (req, res) => {
             const phoneId = body.phoneId;
             const price = Number(body.price);
             
-            // TODO: Реализовать логику продажи
+            // Валидация
+            if (!phoneId || !price || price <= 0) {
+                return res.status(400).json({
+                    ok: false,
+                    error: 'Неверные данные'
+                });
+            }
+            
+            // Получаем пользователя
+            const user = getUserOrCreate(userId);
+            
+            // Получаем инвентарь
+            const inventory = dataStore.inventory.get(userId) || [];
+            
+            // Находим телефон в инвентаре
+            const phoneIndex = inventory.findIndex(p => p.id === phoneId);
+            if (phoneIndex === -1) {
+                return res.status(404).json({
+                    ok: false,
+                    error: 'Телефон не найден в инвентаре'
+                });
+            }
+            
+            const phone = inventory[phoneIndex];
+            
+            // Удаляем из инвентаря
+            inventory.splice(phoneIndex, 1);
+            dataStore.inventory.set(userId, inventory);
+            
+            // Создаем объявление
+            const listingId = `listing_${nextListingId++}`;
+            const listing = {
+                id: listingId,
+                phone: phone,
+                price: price,
+                sellerId: userId,
+                sellerName: user.firstName || user.username,
+                createdAt: Date.now(),
+                // Дублируем информацию для удобства
+                name: phone.name,
+                rarity: phone.rarity,
+                image: phone.image
+            };
+            
+            // Сохраняем объявление
+            dataStore.marketListings.set(listingId, listing);
+            
+            // Добавляем в список объявлений пользователя
+            if (!dataStore.userListings.has(userId)) {
+                dataStore.userListings.set(userId, new Set());
+            }
+            dataStore.userListings.get(userId).add(listingId);
             
             return res.status(200).json({
                 ok: true,
-                message: 'Товар выставлен на продажу'
+                message: 'Товар выставлен на продажу',
+                listing: listing
+            });
+        }
+        
+        // === DELETE /market/listing/:id ===
+        if (req.method === 'DELETE' && segments[0] === 'market' && segments[1] === 'listing') {
+            const listingId = segments[2];
+            const body = await parseBody();
+            const userId = body.userId || url.searchParams.get('userId') || 'test_user';
+            
+            // Находим объявление
+            const listing = dataStore.marketListings.get(listingId);
+            if (!listing) {
+                return res.status(404).json({
+                    ok: false,
+                    error: 'Объявление не найдено'
+                });
+            }
+            
+            // Проверяем, что удаляет владелец
+            if (listing.sellerId !== userId) {
+                return res.status(403).json({
+                    ok: false,
+                    error: 'Нет прав для удаления этого объявления'
+                });
+            }
+            
+            // Возвращаем телефон в инвентарь
+            const inventory = dataStore.inventory.get(userId) || [];
+            inventory.push(listing.phone);
+            dataStore.inventory.set(userId, inventory);
+            
+            // Удаляем объявление
+            dataStore.marketListings.delete(listingId);
+            
+            // Удаляем из списка объявлений пользователя
+            const userListings = dataStore.userListings.get(userId);
+            if (userListings) {
+                userListings.delete(listingId);
+            }
+            
+            return res.status(200).json({
+                ok: true,
+                message: 'Объявление удалено',
+                phone: listing.phone
             });
         }
         

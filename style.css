@@ -880,6 +880,195 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 }
 
 /* =======================
+   Market - Sale card styles
+   ======================= */
+.sale-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    border: 2px solid var(--border);
+    margin-bottom: 12px;
+    transition: var(--transition);
+}
+
+.sale-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+}
+
+.sale-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--surface);
+}
+
+.sale-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sale-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sale-info h4 {
+    margin: 0 0 4px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.sale-rarity {
+    font-size: 0.85rem;
+    color: var(--text-soft);
+    margin-bottom: 4px;
+}
+
+.sale-price {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 0.9rem;
+}
+
+.btn-cancel-sale {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+/* Sellable phone cards */
+.phone-card.sellable {
+    cursor: pointer;
+    position: relative;
+}
+
+.phone-card.sellable .btn-sell-phone {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    font-size: 0.85rem;
+}
+
+/* Market item improvements */
+.market-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.market-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.market-item:hover::before {
+    opacity: 1;
+}
+
+.item-seller {
+    font-size: 0.85rem;
+    color: var(--text-soft);
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.item-seller::before {
+    content: '👤';
+    font-size: 0.9rem;
+}
+
+/* Rarity borders for market/sale items */
+.market-item.rarity-legendary,
+.sale-card.rarity-legendary {
+    border-color: #ffd700;
+}
+
+.market-item.rarity-epic,
+.sale-card.rarity-epic {
+    border-color: #a855f7;
+}
+
+.market-item.rarity-rare,
+.sale-card.rarity-rare {
+    border-color: #3b82f6;
+}
+
+.market-item.rarity-uncommon,
+.sale-card.rarity-uncommon {
+    border-color: #10b981;
+}
+
+.market-item.rarity-common,
+.sale-card.rarity-common {
+    border-color: var(--border);
+}
+
+/* Empty state improvements */
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-soft);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    margin: 8px 0;
+}
+
+.empty-state p:first-of-type {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* Loading states */
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    color: var(--text-soft);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(108, 92, 231, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =======================
    Responsive
    ======================= */
 @media (max-width: 480px) {
@@ -904,5 +1093,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
     
     .stat-value {
         font-size: 1.2rem;
+    }
+    
+    .sale-card {
+        flex-wrap: wrap;
+    }
+    
+    .btn-cancel-sale {
+        width: 100%;
+        margin-top: 8px;
     }
 }

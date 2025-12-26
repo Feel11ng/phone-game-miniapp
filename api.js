@@ -57,10 +57,10 @@ class ApiService {
     }
 
     // Post data to the server
-    async post(endpoint, data) {
+    async post(endpoint, data, method = 'POST') {
         try {
             const response = await fetch(`${this.baseUrl}${endpoint}`, {
-                method: 'POST',
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -73,7 +73,7 @@ class ApiService {
 
             return await response.json();
         } catch (error) {
-            console.error(`API Error (POST ${endpoint}):`, error);
+            console.error(`API Error (${method} ${endpoint}):`, error);
             throw error;
         }
     }
