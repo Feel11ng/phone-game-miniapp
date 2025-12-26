@@ -334,7 +334,8 @@ const UI = {
         try {
             marketItems.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Загрузка маркета...</p></div>';
             
-            const response = await apiService.get('/market');
+            const userId = state.user.id || 'test_user';
+            const response = await apiService.get(`/market?userId=${userId}`);
             state.marketItems = response.items || [];
             
             this.renderMarketItems();
@@ -351,7 +352,7 @@ const UI = {
         marketItems.innerHTML = '';
         
         if (state.marketItems.length === 0) {
-            marketItems.innerHTML = '<div class="empty-state"><p>На рынке пока нет товаров</p></div>';
+            marketItems.innerHTML = '<div class="empty-state"><i class="fas fa-store-slash"></i><p>На рынке пока нет товаров</p><p class="text-soft">Станьте первым продавцом!</p></div>';
             return;
         }
         
@@ -361,13 +362,13 @@ const UI = {
             }, [
                 utils.createElement('div', { class: 'item-image' }, [
                     utils.createElement('img', {
-                        src: `https://via.placeholder.com/80?text=${encodeURIComponent(item.name.split(' ')[0])}`,
+                        src: item.image || `https://via.placeholder.com/80?text=${encodeURIComponent(item.name.split(' ')[0])}`,
                         alt: item.name
                     })
                 ]),
                 utils.createElement('div', { class: 'item-details' }, [
                     utils.createElement('h4', { text: item.name }),
-                    utils.createElement('div', { class: 'item-seller', text: `Продавец: ${item.seller}` }),
+                    utils.createElement('div', { class: 'item-seller', text: `Продавец: ${item.sellerName}` }),
                     utils.createElement('div', { class: 'item-rarity', text: utils.getRarityName(item.rarity) })
                 ]),
                 utils.createElement('div', { class: 'item-actions' }, [
@@ -377,7 +378,7 @@ const UI = {
                     ]),
                     utils.createElement('button', {
                         class: 'btn btn-buy',
-                        'data-item-id': item.id,
+                        'data-listing-id': item.id,
                         text: 'Купить'
                     })
                 ])
@@ -385,6 +386,118 @@ const UI = {
             
             marketItems.appendChild(itemCard);
         });
+    },
+    
+    async loadSellTab() {
+        const sellPhoneList = document.getElementById('sell-phone-list');
+        if (!sellPhoneList) return;
+        
+        sellPhoneList.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+        
+        // Обновляем инвентарь
+        try {
+            const userId = state.user.id || 'test_user';
+            const response = await apiService.get(`/inventory?userId=${userId}`);
+            if (response.ok && response.inventory) {
+                state.user.inventory = response.inventory;
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки инвентаря:', error);
+        }
+        
+        sellPhoneList.innerHTML = '';
+        
+        if (state.user.inventory.length === 0) {
+            sellPhoneList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-box-open"></i>
+                    <p>Нет телефонов для продажи</p>
+                    <p class="text-soft">Откройте кейсы, чтобы получить телефоны</p>
+                </div>
+            `;
+            return;
+        }
+        
+        state.user.inventory.forEach(phone => {
+            const phoneCard = utils.createElement('div', {
+                class: `phone-card rarity-${phone.rarity || 'common'} sellable`
+            }, [
+                utils.createElement('div', { class: 'phone-icon' }, [
+                    utils.createElement('img', {
+                        src: phone.image || 'https://via.placeholder.com/84?text=Phone',
+                        alt: phone.name
+                    })
+                ]),
+                utils.createElement('div', { class: 'phone-info' }, [
+                    utils.createElement('h4', { text: phone.name }),
+                    utils.createElement('p', { text: utils.getRarityName(phone.rarity || 'common') })
+                ]),
+                utils.createElement('button', {
+                    class: 'btn btn-sell-phone',
+                    'data-phone-id': phone.id,
+                    'data-phone-name': phone.name,
+                    text: 'Продать'
+                })
+            ]);
+            
+            sellPhoneList.appendChild(phoneCard);
+        });
+    },
+    
+    async loadMySalesTab() {
+        const salesList = document.getElementById('sales-list');
+        if (!salesList) return;
+        
+        salesList.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+        
+        try {
+            const userId = state.user.id || 'test_user';
+            const response = await apiService.get(`/market/my-listings?userId=${userId}`);
+            const myListings = response.listings || [];
+            
+            salesList.innerHTML = '';
+            
+            if (myListings.length === 0) {
+                salesList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-receipt"></i>
+                        <p>У вас пока нет активных продаж</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            myListings.forEach(listing => {
+                const listingCard = utils.createElement('div', {
+                    class: `sale-card rarity-${listing.rarity}`
+                }, [
+                    utils.createElement('div', { class: 'sale-image' }, [
+                        utils.createElement('img', {
+                            src: listing.image || 'https://via.placeholder.com/60?text=Phone',
+                            alt: listing.name
+                        })
+                    ]),
+                    utils.createElement('div', { class: 'sale-info' }, [
+                        utils.createElement('h4', { text: listing.name }),
+                        utils.createElement('div', { class: 'sale-rarity', text: utils.getRarityName(listing.rarity) }),
+                        utils.createElement('div', { class: 'sale-price' }, [
+                            utils.createElement('i', { class: 'fas fa-bolt' }),
+                            ` ${listing.price} Сигналов`
+                        ])
+                    ]),
+                    utils.createElement('button', {
+                        class: 'btn btn-outline btn-cancel-sale',
+                        'data-listing-id': listing.id,
+                        text: 'Снять с продажи'
+                    })
+                ]);
+                
+                salesList.appendChild(listingCard);
+            });
+        } catch (error) {
+            console.error('Ошибка загрузки продаж:', error);
+            salesList.innerHTML = '<div class="error-state"><p>Не удалось загрузить продажи</p></div>';
+        }
     },
     
     async loadProfilePage() {
@@ -484,6 +597,22 @@ const EventHandlers = {
             return;
         }
         
+        // Продажа телефона
+        const sellBtn = e.target.closest('.btn-sell-phone');
+        if (sellBtn) {
+            e.preventDefault();
+            EventHandlers.handleSellPhone(sellBtn);
+            return;
+        }
+        
+        // Снятие с продажи
+        const cancelSaleBtn = e.target.closest('.btn-cancel-sale');
+        if (cancelSaleBtn) {
+            e.preventDefault();
+            EventHandlers.handleCancelSale(cancelSaleBtn);
+            return;
+        }
+        
         // Переключение вкладок маркета
         const tabBtn = e.target.closest('.tab-btn');
         if (tabBtn) {
@@ -542,8 +671,10 @@ const EventHandlers = {
     },
     
     async handleBuyItem(button) {
-        const itemId = parseInt(button.dataset.itemId);
-        const item = state.marketItems.find(i => i.id === itemId);
+        if (state.isLoading) return;
+        
+        const listingId = button.dataset.listingId;
+        const item = state.marketItems.find(i => i.id === listingId);
         
         if (!item) {
             utils.showNotification('Товар не найден', 'error');
@@ -552,11 +683,127 @@ const EventHandlers = {
         
         if (state.user.signals < item.price) {
             utils.showNotification('Недостаточно сигналов', 'error');
+            soundManager.play('error');
             return;
         }
         
-        // TODO: Реализовать покупку через API
-        utils.showNotification('Функция покупки скоро будет доступна', 'info');
+        try {
+            state.isLoading = true;
+            button.disabled = true;
+            button.textContent = 'Покупаем...';
+            
+            const userId = state.user.id || 'test_user';
+            const response = await apiService.post('/market/buy', {
+                userId,
+                listingId
+            });
+            
+            if (response.ok) {
+                // Обновляем баланс
+                state.user.signals = response.newBalance;
+                UI.updateBalance();
+                
+                // Добавляем в инвентарь
+                state.user.inventory.push(response.phone);
+                
+                // Удаляем из списка маркета
+                state.marketItems = state.marketItems.filter(i => i.id !== listingId);
+                UI.renderMarketItems();
+                
+                utils.showNotification(`Куплен: ${item.name}!`, 'success');
+                soundManager.play('success');
+            } else {
+                utils.showNotification(response.error || 'Ошибка покупки', 'error');
+            }
+        } catch (error) {
+            console.error('Ошибка покупки:', error);
+            utils.showNotification('Не удалось купить товар', 'error');
+        } finally {
+            state.isLoading = false;
+            button.disabled = false;
+            button.textContent = 'Купить';
+        }
+    },
+    
+    async handleSellPhone(button) {
+        const phoneId = button.dataset.phoneId;
+        const phoneName = button.dataset.phoneName;
+        
+        // Показываем промпт для ввода цены
+        const priceInput = prompt(`Укажите цену для "${phoneName}" (в сигналах):`, '100');
+        
+        if (!priceInput) return; // Отменили
+        
+        const price = parseInt(priceInput);
+        
+        if (isNaN(price) || price <= 0) {
+            utils.showNotification('Неверная цена', 'error');
+            return;
+        }
+        
+        try {
+            button.disabled = true;
+            button.textContent = 'Выставляем...';
+            
+            const userId = state.user.id || 'test_user';
+            const response = await apiService.post('/market/sell', {
+                userId,
+                phoneId,
+                price
+            });
+            
+            if (response.ok) {
+                // Удаляем из инвентаря
+                state.user.inventory = state.user.inventory.filter(p => p.id !== phoneId);
+                
+                // Перезагружаем вкладку продажи
+                UI.loadSellTab();
+                
+                utils.showNotification(`${phoneName} выставлен на продажу за ${price} сигналов!`, 'success');
+                soundManager.play('success');
+            } else {
+                utils.showNotification(response.error || 'Ошибка продажи', 'error');
+            }
+        } catch (error) {
+            console.error('Ошибка продажи:', error);
+            utils.showNotification('Не удалось выставить на продажу', 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Продать';
+        }
+    },
+    
+    async handleCancelSale(button) {
+        const listingId = button.dataset.listingId;
+        
+        try {
+            button.disabled = true;
+            button.textContent = 'Снимаем...';
+            
+            const userId = state.user.id || 'test_user';
+            const response = await apiService.post(`/market/listing/${listingId}`, {
+                userId
+            }, 'DELETE');
+            
+            if (response.ok) {
+                // Добавляем телефон обратно в инвентарь
+                state.user.inventory.push(response.phone);
+                
+                // Перезагружаем вкладку "Мои продажи"
+                UI.loadMySalesTab();
+                
+                utils.showNotification('Товар снят с продажи', 'success');
+                soundManager.play('success');
+            } else {
+                utils.showNotification(response.error || 'Ошибка отмены', 'error');
+            }
+        } catch (error) {
+            console.error('Ошибка отмены продажи:', error);
+            utils.showNotification('Не удалось снять с продажи', 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Снять с продажи';
+        }
     },
     
     handleMarketTab(button) {
@@ -573,9 +820,19 @@ const EventHandlers = {
         });
         
         // Загружаем данные
-        if (tabId === 'buy') {
-            UI.renderMarketItems();
+        switch(tabId) {
+            case 'buy':
+                UI.renderMarketItems();
+                break;
+            case 'sell':
+                UI.loadSellTab();
+                break;
+            case 'my-sales':
+                UI.loadMySalesTab();
+                break;
         }
+        
+        soundManager.play('buttonClick');
     }
 };
 
