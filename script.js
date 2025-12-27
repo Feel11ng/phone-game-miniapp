@@ -620,6 +620,8 @@ const EventHandlers = {
 
    handleSellItem(button) {
        const inventoryId = parseInt(button.dataset.inventoryId);
+       console.log("Trying to sell item with inventoryId:", inventoryId);
+       console.log("Current inventory:", state.user.inventory);
        const item = state.user.inventory.find(i => i.id === inventoryId);
        
        if (!item) {
