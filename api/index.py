@@ -154,6 +154,7 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'ok': True, 'items': items}).encode())
         except Exception as e:
+            print(e)
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -179,6 +180,7 @@ class handler(BaseHTTPRequestHandler):
             else:
                 raise Exception("Failed to list item")
         except Exception as e:
+            print(e)
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -204,6 +206,7 @@ class handler(BaseHTTPRequestHandler):
            else:
                raise Exception("Failed to buy item")
        except Exception as e:
+           print(e)
            self.send_response(500)
            self.send_header('Content-type', 'application/json')
            self.end_headers()
