@@ -5,12 +5,9 @@ from urllib.parse import urlparse
 import os
 import aiosqlite
 import logging
-from dotenv import load_dotenv
-
 # --- CONFIG ---
-load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-DATABASE_PATH = os.getenv("DATABASE_PATH", "game_database.db")
+DATABASE_PATH = "/tmp/game_database.db"
 
 # --- DATABASE ---
 logger = logging.getLogger(__name__)
