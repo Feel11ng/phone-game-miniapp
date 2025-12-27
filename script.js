@@ -288,6 +288,7 @@ const UI = {
             
             // Загружаем инвентарь
             const response = await apiService.get(`/inventory?userId=${state.user.id}`);
+            console.log("Inventory response:", response);
             if (response.ok && response.inventory) {
                 state.user.inventory = response.inventory;
             } else {
