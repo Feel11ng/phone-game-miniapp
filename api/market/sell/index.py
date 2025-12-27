@@ -4,7 +4,7 @@ import asyncio
 import sys
 import os
 
-from ... import database as db
+from api import database as db
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
