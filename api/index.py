@@ -87,6 +87,10 @@ class handler(BaseHTTPRequestHandler):
         parsed_path = urlparse(self.path)
         if parsed_path.path == '/api/market':
             self.get_market_listings_handler()
+        elif parsed_path.path == '/api/user':
+            self.get_user_handler()
+        elif parsed_path.path.startswith('/api/inventory'):
+            self.get_inventory_handler()
         else:
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
@@ -170,3 +174,19 @@ class handler(BaseHTTPRequestHandler):
            self.send_header('Content-type', 'application/json')
            self.end_headers()
            self.wfile.write(json.dumps({'ok': False, 'error': str(e)}).encode())
+
+    def get_user_handler(self):
+        # Mock user data
+        user = {"ok": True, "user": {"id": "test_user", "firstName": "Test", "signals": 1000}}
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(user).encode())
+
+    def get_inventory_handler(self):
+        # Mock inventory data
+        inventory = {"ok": True, "inventory": [{"id": "p1", "name": "iPhone 14 Pro", "rarity": "epic", "image": "https://via.placeholder.com/120?text=iPhone14Pro"}]}
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(inventory).encode())
