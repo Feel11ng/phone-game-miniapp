@@ -6,7 +6,6 @@ import sqlite3
 import logging
 
 # --- CONFIG ---
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 DATABASE_PATH = "/tmp/game_database.db"
 
 # --- DATABASE ---
@@ -16,6 +15,18 @@ def get_db_connection():
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+def init_db():
+    with get_db_connection() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, telegram_id INTEGER UNIQUE NOT NULL, signals INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+            CREATE TABLE IF NOT EXISTS phones (id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, brand TEXT NOT NULL, model_code TEXT, rarity TEXT DEFAULT 'Common', value INTEGER DEFAULT 10, image_filename TEXT);
+            CREATE TABLE IF NOT EXISTS cases (id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, price_signals INTEGER DEFAULT 10);
+            CREATE TABLE IF NOT EXISTS case_contents (id INTEGER PRIMARY KEY, case_id INTEGER, phone_id INTEGER, chance REAL, FOREIGN KEY (case_id) REFERENCES cases (id), FOREIGN KEY (phone_id) REFERENCES phones (id));
+            CREATE TABLE IF NOT EXISTS user_inventory (id INTEGER PRIMARY KEY, user_id INTEGER, phone_id INTEGER, acquired_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users (id), FOREIGN KEY (phone_id) REFERENCES phones (id));
+            CREATE TABLE IF NOT EXISTS market_listings (id INTEGER PRIMARY KEY, seller_user_id INTEGER, inventory_item_id INTEGER UNIQUE, price_signals INTEGER, listed_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (seller_user_id) REFERENCES users (id), FOREIGN KEY (inventory_item_id) REFERENCES user_inventory (id));
+        """)
+        conn.commit()
 
 def get_market_listings():
     with get_db_connection() as conn:
@@ -46,14 +57,11 @@ def buy_item_from_market(listing_id, buyer_id):
         cursor = conn.cursor()
         try:
             cursor.execute("BEGIN")
-            
             cursor.execute("SELECT * FROM market_listings WHERE id = ?", (listing_id,))
             listing = cursor.fetchone()
             if not listing: raise Exception("Listing not found")
             
-            seller_id = listing['seller_user_id']
-            price = listing['price_signals']
-            inventory_item_id = listing['inventory_item_id']
+            seller_id, price, inventory_item_id = listing['seller_user_id'], listing['price_signals'], listing['inventory_item_id']
 
             cursor.execute("SELECT * FROM users WHERE id = ?", (buyer_id,))
             buyer = cursor.fetchone()
@@ -99,6 +107,7 @@ class handler(BaseHTTPRequestHandler):
 
     def get_market_listings_handler(self):
         try:
+            init_db()
             items = get_market_listings()
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
@@ -112,6 +121,7 @@ class handler(BaseHTTPRequestHandler):
 
     def sell_item_handler(self):
         try:
+            init_db()
             content_length = int(self.headers['Content-Length'])
             post_data = json.loads(self.rfile.read(content_length))
             user_id, inventory_item_id, price = post_data.get('userId'), post_data.get('inventoryItemId'), post_data.get('price')
@@ -137,6 +147,7 @@ class handler(BaseHTTPRequestHandler):
             
     def buy_item_handler(self):
        try:
+           init_db()
            content_length = int(self.headers['Content-Length'])
            post_data = json.loads(self.rfile.read(content_length))
            listing_id, buyer_id = post_data.get('listingId'), post_data.get('userId')
