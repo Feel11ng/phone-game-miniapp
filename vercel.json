@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/market/sell", "destination": "/api/market/sell.py" },
+    { "source": "/api/market/buy", "destination": "/api/market/buy.py" },
+    { "source": "/api/market", "destination": "/api/market.py" },
+    { "source": "/(.*)", "destination": "/$1" }
+  ]
+}
