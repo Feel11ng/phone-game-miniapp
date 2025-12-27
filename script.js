@@ -290,6 +290,8 @@ const UI = {
             const response = await apiService.get(`/inventory?userId=${state.user.id}`);
             if (response.ok && response.inventory) {
                 state.user.inventory = response.inventory;
+            } else {
+               state.user.inventory = [];
             }
             
             inventoryList.innerHTML = '';
