@@ -8,7 +8,11 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import database as db
+try:
+    import database as db
+except ImportError:
+    print("Error importing database module")
+    db = None
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
