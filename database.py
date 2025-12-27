@@ -152,7 +152,7 @@ async def get_market_listings():
             ORDER BY ml.listed_at DESC
         """)
         rows = await cursor.fetchall()
-        return [dict(row) for row in rows]
+        return [dict(row) for row in rows] if rows else []
 
 async def list_item_on_market(user_id, inventory_item_id, price):
     async with aiosqlite.connect(DATABASE_PATH) as db:
