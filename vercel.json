@@ -1,31 +1,10 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "api/**/*.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "public/**/*",
-      "use": "@vercel/static"
-    }
+    { "src": "api/**/*.py", "use": "@vercel/python" }
   ],
-  "routes": [
-    {
-      "src": "/api/market/sell",
-      "dest": "/api/market/sell.py"
-    },
-    {
-      "src": "/api/market/buy",
-      "dest": "/api/market/buy.py"
-    },
-    {
-      "src": "/api/market",
-      "dest": "/api/market.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/public/$1" }
   ]
 }
