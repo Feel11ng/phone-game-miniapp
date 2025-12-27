@@ -454,14 +454,20 @@ const UI = {
 // ======================
 const EventHandlers = {
     init() {
-        // Навигация
-        elements.navItems.forEach(item => {
-            item.addEventListener('click', this.handleNavigation);
-        });
-        
-        // Делегирование событий для динамического контента
-        document.addEventListener('click', this.handleGlobalClick);
-        
+       document.body.addEventListener('click', (e) => {
+           const target = e.target;
+
+           // Навигация
+           const navItem = target.closest('.nav-item');
+           if (navItem) {
+               this.handleNavigation(e);
+               return;
+           }
+
+           // Глобальные клики
+           this.handleGlobalClick(e);
+       });
+
         // Закрытие модального окна
         if (elements.caseResultModal) {
             const closeBtn = elements.caseResultModal.querySelector('.close-modal, #close-result');
