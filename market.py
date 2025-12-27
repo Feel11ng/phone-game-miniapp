@@ -38,12 +38,15 @@ class handler(BaseHTTPRequestHandler):
 
     async def get_market_listings(self):
         try:
+            print("Fetching market listings...")
             items = await db.get_market_listings()
+            print(f"Found {len(items)} items.")
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'ok': True, 'items': items}).encode())
         except Exception as e:
+            print(f"Error fetching market listings: {e}")
             self.send_response(500)
             self.end_headers()
             self.wfile.write(json.dumps({'ok': False, 'error': str(e)}).encode())
