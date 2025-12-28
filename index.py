@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from utils.database import GameDatabase
 from utils.config import Config
 
-app = Flask(__name__, static_folder='public')
+app = Flask(__name__, static_folder='public', static_url_path='')
 
 # Инициализация БД
 try:
