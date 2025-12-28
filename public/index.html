@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Phone Tycoon</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <meta name="theme-color" content="#6c5ce7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <link rel="stylesheet" href="./style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <script type="module">
+        import ErrorHandler from './errorHandler.js';
+        import AnimationManager from './animations.js';
+        import { soundManager } from './sounds.js';
+        import initApp from './script.js';
+
+        async function bootstrap() {
+            try {
+                ErrorHandler.init();
+                AnimationManager.init();
+                await initApp();
+                document.body.style.opacity = '1';
+                document.body.classList.add('loaded');
+            } catch (error) {
+                console.error('Bootstrap error:', error);
+                document.body.style.opacity = '1';
+            } finally {
+                const loader = document.querySelector('.app-loading');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.style.display = 'none', 300);
+                }
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bootstrap);
+        } else {
+            bootstrap();
+        }
+    </script>
+
+    <style>
+        body { opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .app-loading {
+            position: fixed; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; background: var(--bg, #1e1e2e); z-index: 9999;
+        }
+        .loader {
+            width: 48px; height: 48px; border: 3px solid rgba(108, 92, 231, 0.1);
+            border-radius: 50%; border-top-color: #6c5ce7; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 16px; color: #b8c2cc; font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body>
+    <div class="app-loading">
+        <div class="loader"></div>
+        <p class="loading-text">Загрузка...</p>
+    </div>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="balance-card">
+                <i class="fas fa-bolt"></i>
+                <span class="balance-amount" id="signals-count">0</span>
+                <span class="balance-label">Сигналов</span>
+            </div>
+            <div class="user-avatar" id="user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- HOME PAGE -->
+            <section id="home-section" class="page active">
+                <div class="card welcome-banner">
+                    <h1>Добро пожаловать в Phone Tycoon!</h1>
+                    <p>Собирай, улучшай и продавай виртуальные телефоны</p>
+                </div>
+                
+                <div class="quick-actions">
+                    <div class="action-card" data-section="inventory">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Инвентарь</span>
+                    </div>
+                    <div class="action-card" data-section="cases">
+                        <i class="fas fa-gift"></i>
+                        <span>Кейсы</span>
+                    </div>
+                    <div class="action-card" data-section="market">
+                        <i class="fas fa-store"></i>
+                        <span>Рынок</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Последние действия</h2>
+                    <div class="activity-list" id="activity-feed">
+                        <div class="activity-item">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Добро пожаловать в Phone Tycoon!</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- INVENTORY PAGE -->
+            <section id="inventory-section" class="page">
+                <div class="card">
+                    <div class="section-header">
+                        <h2><i class="fas fa-mobile-alt"></i> Ваша коллекция</h2>
+                    </div>
+                    
+                    <div id="inventory-list" class="phone-grid">
+                        <div class="empty-state">
+                            <i class="fas fa-box-open"></i>
+                            <p>Инвентарь пуст</p>
+                            <p class="text-soft">Откройте кейсы, чтобы получить телефоны</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CASES PAGE -->
+            <section id="cases-section" class="page">
+                <div class="card">
+                    <h2><i class="fas fa-gift"></i> Кейсы</h2>
+                    <p class="text-soft">Откройте кейс, чтобы получить случайный телефон</p>
+                </div>
+                
+                <div class="cases-grid">
+                    <div class="loading-state">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Загрузка кейсов...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MARKET PAGE -->
+            <section id="market-section" class="page">
+                <div class="card">
+                    <h2><i class="fas fa-store"></i> Маркет</h2>
+                    
+                    <div class="market-tabs">
+                        <button class="tab-btn active" data-tab="buy">
+                            <i class="fas fa-shopping-cart"></i> Купить
+                        </button>
+                        <button class="tab-btn" data-tab="sell">
+                            <i class="fas fa-tag"></i> Продать
+                        </button>
+                        <button class="tab-btn" data-tab="my-sales">
+                            <i class="fas fa-list"></i> Мои продажи
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- BUY TAB -->
+                <div class="tab-content active" id="buy-tab">
+                    <div id="market-items" class="market-items">
+                        <div class="loading-state">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Загрузка товаров...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SELL TAB -->
+                <div class="tab-content" id="sell-tab">
+                    <div class="card">
+                        <h3>Выберите телефон для продажи</h3>
+                        <div id="sell-phone-list" class="phone-grid">
+                            <div class="empty-state">
+                                <i class="fas fa-box-open"></i>
+                                <p>Нет телефонов для продажи</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- MY SALES TAB -->
+                <div class="tab-content" id="my-sales-tab">
+                    <div class="card">
+                        <h3>Мои продажи</h3>
+                        <div id="sales-list" class="sales-list">
+                            <div class="empty-state">
+                                <i class="fas fa-receipt"></i>
+                                <p>У вас пока нет продаж</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PROFILE PAGE -->
+            <section id="profile-section" class="page">
+                <div class="card profile-header">
+                    <div class="profile-avatar" id="profile-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h2 id="username">Игрок</h2>
+                    
+                    <div class="profile-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-mobile-alt"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="total-phones">0</div>
+                                <div class="stat-label">Телефонов</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-gift"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="total-cases">0</div>
+                                <div class="stat-label">Кейсов</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-coins"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="total-sales">0</div>
+                                <div class="stat-label">Продаж</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card profile-actions">
+                    <button class="btn btn-outline" id="settings-btn">
+                        <i class="fas fa-cog"></i> Настройки
+                    </button>
+                    <button class="btn btn-outline" id="help-btn">
+                        <i class="fas fa-question-circle"></i> Помощь
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active" data-section="home">
+                <i class="fas fa-home"></i>
+                <span>Главная</span>
+            </a>
+            <a href="#" class="nav-item" data-section="inventory">
+                <i class="fas fa-mobile-alt"></i>
+                <span>Инвентарь</span>
+            </a>
+            <a href="#" class="nav-item" data-section="cases">
+                <i class="fas fa-gift"></i>
+                <span>Кейсы</span>
+            </a>
+            <a href="#" class="nav-item" data-section="market">
+                <i class="fas fa-store"></i>
+                <span>Рынок</span>
+            </a>
+            <a href="#" class="nav-item" data-section="profile">
+                <i class="fas fa-user"></i>
+                <span>Профиль</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Case Result Modal -->
+    <div class="case-result-modal">
+        <div class="modal-content">
+            <button class="close-modal" aria-label="Закрыть">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3>🎉 Поздравляем!</h3>
+            <div class="prize-animation">
+                <div class="phone-reveal">
+                    <img id="result-phone-img" src="" alt="Prize">
+                </div>
+            </div>
+            <p id="result-phone-name" class="prize-name"></p>
+            <p class="prize-rarity"></p>
+            <button class="btn btn-primary" id="close-result">
+                <i class="fas fa-check"></i> Отлично!
+            </button>
+        </div>
+    </div>
+    
+    <!-- Модальное окно продажи -->
+   <div class="modal sell-item-modal">
+       <div class="modal-content">
+           <button class="close-modal">&times;</button>
+           <h3>Продать телефон</h3>
+           <p id="sell-item-name"></p>
+           <form id="sell-item-form">
+               <input type="hidden" id="sell-item-id">
+               <div class="form-group">
+                   <label for="sell-price">Цена (в сигналах)</label>
+                   <input type="number" id="sell-price" placeholder="Введите цену" required min="1">
+               </div>
+               <button type="submit" class="btn">Выставить на продажу</button>
+           </form>
+       </div>
+   </div>
+   
+   <!-- Модальное окно продажи -->
+  <div class="modal sell-item-modal">
+      <div class="modal-content">
+          <button class="close-modal">&times;</button>
+          <h3>Продать телефон</h3>
+          <p id="sell-item-name"></p>
+          <form id="sell-item-form">
+              <input type="hidden" id="sell-item-id">
+              <div class="form-group">
+                  <label for="sell-price">Цена (в сигналах)</label>
+                  <input type="number" id="sell-price" placeholder="Введите цену" required min="1">
+              </div>
+              <button type="submit" class="btn">Выставить на продажу</button>
+          </form>
+      </div>
+  </div>
+</body>
+</html>

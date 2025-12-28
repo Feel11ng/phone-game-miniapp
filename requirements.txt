@@ -1,4 +1,1 @@
-Flask
-Flask
-python-telegram-bot
-nest_asyncio
+Flask>=3.0.0
