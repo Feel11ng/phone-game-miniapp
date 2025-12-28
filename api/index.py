@@ -5,8 +5,8 @@ import os
 # Добавляем корневую директорию в путь Python
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from src.database import GameDatabase
-from src.config import Config
+from database import GameDatabase
+from config import Config
 
 app = Flask(__name__)
 db = GameDatabase()
