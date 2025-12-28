@@ -118,4 +118,4 @@ def get_user():
 @app.route('/api/inventory', methods=['GET'])
 def get_inventory():
     inventory = {"ok": True, "inventory": [{"id": "p1", "name": "iPhone 14 Pro", "rarity": "epic", "image": "https://via.placeholder.com/120?text=iPhone14Pro"}]}
-    return jsonify(inventory)
+    return jsonify(inventory)  
